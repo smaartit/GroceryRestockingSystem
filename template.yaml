@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: "Grocery Restocking System"
+
+Resources:
+  GroceryEventsTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      TableName: "GroceryEvents"
+      AttributeDefinitions:
+      - AttributeName: "EventId"
+        AttributeType: "S"
+      KeySchema:
+      - AttributeName: "EventId"
+        KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES # Enabling DynamoDB Stream on the table
+
+  GroceryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: GroceryList
+      AttributeDefinitions:
+      - AttributeName: Id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: Id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  GroceryEventsQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: "GroceryEventsQueue"
+      VisibilityTimeout: 70
+
+  GroceryRestockNotificationsTopic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      TopicName: "GroceryRestockNotifications"
+
+  GrocerySNSEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref GroceryRestockNotificationsTopic
+      Protocol: email
+      Endpoint: asma.mahmuda@outlook.com
+
+  EventPublisher:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: EventPublisher::EventPublisher.EventPublisher::FunctionHandler
+      Runtime: dotnet8
+      CodeUri: ./src/EventPublisher
+      MemorySize: 512
+      Timeout: 60
+      Environment:
+        Variables:
+          GROCERY_EVENTS_TABLE: !Ref GroceryEventsTable
+          GROCERY_TABLE: !Ref GroceryTable
+          SQS_QUEUE_URL: !Ref GroceryEventsQueue
+      Events:
+        DynamoDBStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt GroceryEventsTable.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 5
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref GroceryEventsTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - sqs:SendMessage
+          Resource: !GetAtt GroceryEventsQueue.Arn
+  EventProcessor:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: EventProcessor::EventProcessor.EventProcessor::FunctionHandler
+      Runtime: dotnet8
+      CodeUri: ./src/EventProcessor
+      MemorySize: 512
+      Timeout: 60
+      Environment:
+        Variables:
+          GROCERY_EVENTS_TABLE: !Ref GroceryEventsTable
+          GROCERY_TABLE: !Ref GroceryTable
+          SQS_QUEUE_URL: !Ref GroceryEventsQueue
+          SNS_TOPIC_ARN: !Ref GroceryRestockNotificationsTopic
+      Events:
+        SQSQueue:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt GroceryEventsQueue.Arn
+            BatchSize: 10
+
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref GroceryTable
+      - DynamoDBReadPolicy:
+          TableName: !Ref GroceryEventsTable
+      - SNSPublishMessagePolicy:
+          TopicName: !Ref GroceryRestockNotificationsTopic
+
+  GroceryRestockingApi:
+    Type: "AWS::Serverless::Api"
+    Properties:
+      Name: "GroceryRestockingApi"
+      StageName: "prod"
+      DefinitionBody:
+        swagger: "2.0"
+        info:
+          title: "Grocery Restocking API"
+          version: "1.0"
+        paths:
+          /consume-item:
+            post:
+              summary: "Trigger an event for consumed item restocking"
+              operationId: "consumeItem"
+              parameters:
+              - in: body
+                name: item
+                description: "Item information"
+                required: true
+                schema:
+                  type: object
+                  properties:
+                    itemId:
+                      type: string
+                    itemName:
+                      type: string
+              responses:
+                "200":
+                  description: "Item consumption event triggered"
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${ApiConsumeItemFunction.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+
+  # API Gateway Lambda integration
+  ApiConsumeItemFunction:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: ApiConsumeItem::ApiConsumeItem.ApiConsumeItem::FunctionHandler
+      Runtime: dotnet8
+      CodeUri: ./src/ApiConsumeItem
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          SQS_QUEUE_URL: !Ref GroceryEventsQueue
+          OUTBOX_TABLE_NAME: !Ref GroceryEventsTable
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref GroceryEventsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GroceryRestockingApi
+            Path: /consume-item
+            Method: post
+
+  AddItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src/AddItemFunction
+      Handler: AddItemFunction::AddItemFunction.AddItemFunction::FunctionHandler
+      Runtime: dotnet8
+      Architectures:
+      - x86_64
+      MemorySize: 256
+      Timeout: 10
+      Environment:
+        Variables:
+          GROCERY_TABLE: !Ref GroceryTable
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref GroceryTable
+      Events:
+        AddItemAPI:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: POST
+  UpdateStockFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: UpdateStockFunction::UpdateStockFunction.UpdateStockFunction::FunctionHandler
+      Runtime: dotnet8
+      CodeUri: ./src/UpdateStockFunction
+      MemorySize: 256
+      Timeout: 10
+      Environment:
+        Variables:
+          GROCERY_TABLE: !Ref GroceryTable
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref GroceryTable
+      Events:
+        UpdateStockAPI:
+          Type: Api
+          Properties:
+            Path: /items/{id}
+            Method: PUT
+
+Outputs:
+  GroceryRestockingApiUrl:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${GroceryRestockingApi}.execute-api.us-east-1.amazonaws.com/prod/consume-item"
