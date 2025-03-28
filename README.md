@@ -50,7 +50,7 @@ The **Outbox Pattern** would be utilized to ensure reliable and consistent deliv
 
 ### **High-Level Architecture Diagram**
 
-![alt text](<Screenshot 2025-03-28 at 2.01.34 pm.png>)
+![alt text](architecture-diagram.png)
 
 ---
 
