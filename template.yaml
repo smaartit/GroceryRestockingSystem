@@ -1,5 +1,5 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Transform: 'AWS::Serverless-2016-10-31'
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::Serverless-2016-10-31"
 Description: "Grocery Restocking System"
 
 Resources:
@@ -8,11 +8,11 @@ Resources:
     Properties:
       TableName: "GroceryEvents"
       AttributeDefinitions:
-      - AttributeName: "EventId"
-        AttributeType: "S"
+        - AttributeName: "EventId"
+          AttributeType: "S"
       KeySchema:
-      - AttributeName: "EventId"
-        KeyType: "HASH"
+        - AttributeName: "EventId"
+          KeyType: "HASH"
       ProvisionedThroughput:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
@@ -24,11 +24,11 @@ Resources:
     Properties:
       TableName: GroceryList
       AttributeDefinitions:
-      - AttributeName: Id
-        AttributeType: S
+        - AttributeName: Id
+          AttributeType: S
       KeySchema:
-      - AttributeName: Id
-        KeyType: HASH
+        - AttributeName: Id
+          KeyType: HASH
       ProvisionedThroughput:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
@@ -72,13 +72,13 @@ Resources:
             StartingPosition: TRIM_HORIZON
             BatchSize: 5
       Policies:
-      - DynamoDBCrudPolicy:
-          TableName: !Ref GroceryEventsTable
-      - Statement:
-        - Effect: Allow
-          Action:
-          - sqs:SendMessage
-          Resource: !GetAtt GroceryEventsQueue.Arn
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GroceryEventsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt GroceryEventsQueue.Arn
   EventProcessor:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -101,18 +101,22 @@ Resources:
             BatchSize: 10
 
       Policies:
-      - DynamoDBCrudPolicy:
-          TableName: !Ref GroceryTable
-      - DynamoDBReadPolicy:
-          TableName: !Ref GroceryEventsTable
-      - SNSPublishMessagePolicy:
-          TopicName: !Ref GroceryRestockNotificationsTopic
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GroceryTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref GroceryEventsTable
+        - SNSPublishMessagePolicy:
+            TopicName: !Ref GroceryRestockNotificationsTopic
 
   GroceryRestockingApi:
     Type: "AWS::Serverless::Api"
     Properties:
       Name: "GroceryRestockingApi"
       StageName: "prod"
+      Cors:
+        AllowMethods: "'GET,POST,PUT,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
       DefinitionBody:
         swagger: "2.0"
         info:
@@ -124,17 +128,17 @@ Resources:
               summary: "Trigger an event for consumed item restocking"
               operationId: "consumeItem"
               parameters:
-              - in: body
-                name: item
-                description: "Item information"
-                required: true
-                schema:
-                  type: object
-                  properties:
-                    itemId:
-                      type: string
-                    itemName:
-                      type: string
+                - in: body
+                  name: item
+                  description: "Item information"
+                  required: true
+                  schema:
+                    type: object
+                    properties:
+                      itemId:
+                        type: string
+                      itemName:
+                        type: string
               responses:
                 "200":
                   description: "Item consumption event triggered"
@@ -158,8 +162,8 @@ Resources:
           SQS_QUEUE_URL: !Ref GroceryEventsQueue
           OUTBOX_TABLE_NAME: !Ref GroceryEventsTable
       Policies:
-      - DynamoDBCrudPolicy:
-          TableName: !Ref GroceryEventsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GroceryEventsTable
       Events:
         Api:
           Type: Api
@@ -175,15 +179,15 @@ Resources:
       Handler: AddItemFunction::AddItemFunction.AddItemFunction::FunctionHandler
       Runtime: dotnet8
       Architectures:
-      - x86_64
+        - x86_64
       MemorySize: 256
       Timeout: 10
       Environment:
         Variables:
           GROCERY_TABLE: !Ref GroceryTable
       Policies:
-      - DynamoDBCrudPolicy:
-          TableName: !Ref GroceryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GroceryTable
       Events:
         AddItemAPI:
           Type: Api
@@ -202,8 +206,8 @@ Resources:
         Variables:
           GROCERY_TABLE: !Ref GroceryTable
       Policies:
-      - DynamoDBCrudPolicy:
-          TableName: !Ref GroceryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GroceryTable
       Events:
         UpdateStockAPI:
           Type: Api
