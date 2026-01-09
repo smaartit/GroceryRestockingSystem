@@ -1,6 +1,6 @@
 # Grocery Restocking System - React UI
 
-A simple React-based user interface for the Grocery Restocking System.
+A simple React-based user interface for the Grocery Restocking System, built with TypeScript.
 
 ## Features
 
@@ -9,21 +9,22 @@ A simple React-based user interface for the Grocery Restocking System.
 - ✅ Buy again functionality to restock items
 - ✅ Real-time quantity tracking
 - ✅ Clean, todo-list style interface
+- ✅ TypeScript for type safety and better developer experience
 
 ## Setup
 
 1. Install dependencies:
 ```bash
-npm install
+yarn install
 ```
 
 2. Configure API URL:
-   - Update the `DEFAULT_API_BASE_URL` in `src/App.js` with your actual API Gateway URL
+   - Update the `DEFAULT_API_BASE_URL` in `src/App.tsx` with your actual API Gateway URL
    - Or enter it in the API configuration field in the UI (it will be saved to localStorage)
 
 3. Start the development server:
 ```bash
-npm start
+yarn start
 ```
 
 The app will open at [http://localhost:3000](http://localhost:3000)
@@ -37,7 +38,7 @@ The app will open at [http://localhost:3000](http://localhost:3000)
 ## Building for Production
 
 ```bash
-npm run build
+yarn build
 ```
 
 This creates an optimized production build in the `build` folder.

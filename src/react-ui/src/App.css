@@ -1,5 +1,5 @@
 .app {
-  max-width: 600px;
+  max-width: 900px;
   margin: 0 auto;
   background: white;
   border-radius: 12px;
@@ -231,5 +231,94 @@
   font-size: 0.9rem;
   color: #666;
   font-weight: 500;
+}
+
+.grocery-suggestions {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.category-section {
+  margin-bottom: 30px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.category-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #667eea;
+}
+
+.subcategory-section {
+  margin-bottom: 20px;
+  margin-left: 10px;
+}
+
+.subcategory-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 10px;
+  margin-top: 15px;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.suggestion-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+}
+
+.item-name-small {
+  font-size: 0.9rem;
+  color: #333;
+  flex: 1;
+  margin-right: 10px;
+  word-break: break-word;
+}
+
+.add-item-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .items-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .suggestion-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .add-item-btn {
+    width: 100%;
+  }
 }
 
