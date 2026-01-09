@@ -1,0 +1,231 @@
+.app {
+  max-width: 600px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.app-header h1 {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.app-header p {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.add-item-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.add-item-form input {
+  flex: 1;
+  min-width: 150px;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.add-item-form input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.add-item-form input[type="number"] {
+  width: 100px;
+  flex: 0 0 100px;
+}
+
+.add-item-form button {
+  padding: 12px 24px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.add-item-form button:hover {
+  background: #5568d3;
+}
+
+.add-item-form button:active {
+  transform: scale(0.98);
+}
+
+.grocery-list {
+  list-style: none;
+}
+
+.grocery-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  margin-bottom: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.grocery-item:hover {
+  background: #e9ecef;
+  transform: translateX(5px);
+}
+
+.grocery-item.finished {
+  opacity: 0.6;
+}
+
+.grocery-item.finished .item-name {
+  text-decoration: line-through;
+}
+
+.item-checkbox {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.item-name {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.item-details {
+  display: flex;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.item-quantity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quantity-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.item-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.consume-button {
+  background: #28a745;
+  color: white;
+}
+
+.consume-button:hover {
+  background: #218838;
+}
+
+.buy-again-button {
+  background: #ffc107;
+  color: #333;
+}
+
+.buy-again-button:hover {
+  background: #e0a800;
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #f5c6cb;
+}
+
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #c3e6cb;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  margin-top: 10px;
+}
+
+.api-config {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.api-config input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+.api-config label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
