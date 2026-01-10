@@ -36,6 +36,8 @@ Resources:
           KeySchema:
             - AttributeName: Name
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
           ProvisionedThroughput:
             ReadCapacityUnits: 5
             WriteCapacityUnits: 5
@@ -145,23 +147,6 @@ Resources:
         AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
         MaxAge: "'600'"
-      GatewayResponses:
-        DEFAULT_4XX:
-          ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-        DEFAULT_5XX:
-          ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-        BAD_REQUEST_BODY:
-          ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-        BAD_REQUEST_PARAMETERS:
-          ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
       DefinitionBody:
         swagger: "2.0"
         info:
@@ -183,10 +168,18 @@ Resources:
                     Access-Control-Allow-Headers:
                       type: string
               x-amazon-apigateway-integration:
-                type: "aws_proxy"
-                httpMethod: "OPTIONS"
-                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${ApiConsumeItemFunction.Arn}/invocations"
-                passthroughBehavior: "when_no_match"
+                type: "mock"
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  "200":
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                      method.response.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+                    responseTemplates:
+                      application/json: ""
             post:
               summary: "Trigger an event for consumed item restocking"
               operationId: "consumeItem"
@@ -217,6 +210,156 @@ Resources:
                 httpMethod: "POST"
                 uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${ApiConsumeItemFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
+          /items:
+            options:
+              summary: "CORS preflight for items"
+              operationId: "itemsOptions"
+              responses:
+                "200":
+                  description: "CORS preflight response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: "mock"
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  "200":
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                      method.response.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+                    responseTemplates:
+                      application/json: ""
+            post:
+              summary: "Add a new item to the pantry"
+              operationId: "addItem"
+              parameters:
+                - in: body
+                  name: item
+                  description: "Item information"
+                  required: true
+                  schema:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      category:
+                        type: string
+                      quantity:
+                        type: integer
+                      price:
+                        type: number
+              responses:
+                "200":
+                  description: "Item added successfully"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${AddItemFunction.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+          /items/{id}:
+            options:
+              summary: "CORS preflight for update item"
+              operationId: "updateItemOptions"
+              parameters:
+                - in: path
+                  name: id
+                  required: true
+                  type: string
+              responses:
+                "200":
+                  description: "CORS preflight response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: "mock"
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  "200":
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                      method.response.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+                    responseTemplates:
+                      application/json: ""
+            put:
+              summary: "Update item stock"
+              operationId: "updateItem"
+              parameters:
+                - in: path
+                  name: id
+                  required: true
+                  type: string
+                - in: body
+                  name: stockUpdate
+                  description: "Stock update information"
+                  required: true
+                  schema:
+                    type: object
+                    properties:
+                      quantity:
+                        type: integer
+              responses:
+                "200":
+                  description: "Item updated successfully"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "PUT"
+                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${UpdateStockFunction.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
+
+  # API Gateway Lambda Permissions
+  ApiConsumeItemFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiConsumeItemFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GroceryRestockingApi}/*/*"
+
+  AddItemFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AddItemFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GroceryRestockingApi}/*/*"
+
+  UpdateStockFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UpdateStockFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GroceryRestockingApi}/*/*"
 
   # API Gateway Lambda integration
   ApiConsumeItemFunction:
@@ -234,19 +377,6 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GroceryEventsTable
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GroceryRestockingApi
-            Path: /consume-item
-            Method: post
-        ApiOptions:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GroceryRestockingApi
-            Path: /consume-item
-            Method: OPTIONS
 
   AddItemFunction:
     Type: AWS::Serverless::Function
@@ -264,19 +394,6 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PantryItemsTable
-      Events:
-        AddItemAPI:
-          Type: Api
-          Properties:
-            Path: /items
-            Method: POST
-            RestApiId: !Ref GroceryRestockingApi
-        AddItemOptionsAPI:
-          Type: Api
-          Properties:
-            Path: /items
-            Method: OPTIONS
-            RestApiId: !Ref GroceryRestockingApi
   UpdateStockFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -291,21 +408,14 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GroceryTable
-      Events:
-        UpdateStockAPI:
-          Type: Api
-          Properties:
-            Path: /items/{id}
-            Method: PUT
-            RestApiId: !Ref GroceryRestockingApi
-        UpdateStockOptionsAPI:
-          Type: Api
-          Properties:
-            Path: /items/{id}
-            Method: OPTIONS
-            RestApiId: !Ref GroceryRestockingApi
 
 Outputs:
   GroceryRestockingApiUrl:
     Description: "API Gateway endpoint URL for Prod stage"
     Value: !Sub "https://${GroceryRestockingApi}.execute-api.us-east-1.amazonaws.com/prod/consume-item"
+  ItemsEndpointUrl:
+    Description: "API Gateway endpoint URL for items endpoint"
+    Value: !Sub "https://${GroceryRestockingApi}.execute-api.us-east-1.amazonaws.com/prod/items"
+  UpdateItemEndpointUrl:
+    Description: "API Gateway endpoint URL for update item endpoint"
+    Value: !Sub "https://${GroceryRestockingApi}.execute-api.us-east-1.amazonaws.com/prod/items/{id}"
