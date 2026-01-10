@@ -265,6 +265,7 @@ Resources:
                       type: string
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
+                httpMethod: "POST"
                 uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetPantryItemsFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
             post:
@@ -362,7 +363,7 @@ Resources:
                       type: string
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
-                httpMethod: "PUT"
+                httpMethod: "POST"
                 uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${UpdateStockFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
 
