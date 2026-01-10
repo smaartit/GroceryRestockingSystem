@@ -26,6 +26,30 @@ Resources:
       AttributeDefinitions:
         - AttributeName: Id
           AttributeType: S
+        - AttributeName: Name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: NameIndex
+          KeySchema:
+            - AttributeName: Name
+              KeyType: HASH
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  PantryItemsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: PantryItems
+      AttributeDefinitions:
+        - AttributeName: Id
+          AttributeType: S
       KeySchema:
         - AttributeName: Id
           KeyType: HASH
@@ -91,6 +115,7 @@ Resources:
         Variables:
           GROCERY_EVENTS_TABLE: !Ref GroceryEventsTable
           GROCERY_TABLE: !Ref GroceryTable
+          PANTRY_ITEMS_TABLE: !Ref PantryItemsTable
           SQS_QUEUE_URL: !Ref GroceryEventsQueue
           SNS_TOPIC_ARN: !Ref GroceryRestockNotificationsTopic
       Events:
@@ -105,6 +130,8 @@ Resources:
             TableName: !Ref GroceryTable
         - DynamoDBReadPolicy:
             TableName: !Ref GroceryEventsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref PantryItemsTable
         - SNSPublishMessagePolicy:
             TopicName: !Ref GroceryRestockNotificationsTopic
 
@@ -233,10 +260,10 @@ Resources:
       Timeout: 10
       Environment:
         Variables:
-          GROCERY_TABLE: !Ref GroceryTable
+          PANTRY_ITEMS_TABLE: !Ref PantryItemsTable
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref GroceryTable
+            TableName: !Ref PantryItemsTable
       Events:
         AddItemAPI:
           Type: Api

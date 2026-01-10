@@ -47,12 +47,35 @@ public class AddItemFunction
         {
             // Parse the incoming request body
             var requestBody = request.Body;
-            var item = System.Text.Json.JsonSerializer.Deserialize<GroceryItem>(requestBody);
+            var item = System.Text.Json.JsonSerializer.Deserialize<PantryItem>(requestBody);
 
-            // Create a unique Id for the grocery item (e.g., GUID)
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(item.Name))
+            {
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = 400,
+                    Body = "Item name is required",
+                    Headers = corsHeaders
+                };
+            }
+
+            // Create a unique Id for the pantry item (e.g., GUID)
             item.Id = Guid.NewGuid().ToString();
 
-            // Save the item to DynamoDB
+            // Set default quantity to 1 if not specified or is 0
+            if (item.Quantity <= 0)
+            {
+                item.Quantity = 1;
+            }
+
+            // Set default category if not specified
+            if (string.IsNullOrWhiteSpace(item.Category))
+            {
+                item.Category = "General";
+            }
+
+            // Save the item to PantryItems table
             await _dbContext.SaveAsync(item);
 
             // Return success response
@@ -75,8 +98,8 @@ public class AddItemFunction
             };
         }
     }
-    [DynamoDBTable("GroceryList")]
-    public class GroceryItem
+    [DynamoDBTable("PantryItems")]
+    public class PantryItem
     {
         [DynamoDBHashKey] // The primary key for DynamoDB table
         public string Id { get; set; }
