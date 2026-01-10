@@ -440,14 +440,16 @@ Resources:
       Runtime: dotnet8
       Architectures:
         - x86_64
-      MemorySize: 512
-      Timeout: 30
+      MemorySize: 256
+      Timeout: 10
       Environment:
         Variables:
           PANTRY_ITEMS_TABLE: !Ref PantryItemsTable
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref PantryItemsTable
+    Metadata:
+      BuildMethod: dotnet
 
   UpdateStockFunction:
     Type: AWS::Serverless::Function
