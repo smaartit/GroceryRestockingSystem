@@ -1575,7 +1575,7 @@
 
 "@remix-run/router@1.23.2":
   version "1.23.2"
-  resolved "https://artifactory.xero-support.com/artifactory/api/npm/npm/@remix-run/router/-/router-1.23.2.tgz#156c4b481c0bee22a19f7924728a67120de06971"
+  resolved "https://registry.npmjs.org/@remix-run/router/-/router-1.23.2.tgz#156c4b481c0bee22a19f7924728a67120de06971"
   integrity sha512-Ic6m2U/rMjTkhERIa/0ZtXJP17QUi2CbWE7cqx4J58M8aA3QTfW+2UlQ4psvTX9IO1RfNVhK3pcpdjej7L+t2w==
 
 "@rollup/plugin-babel@^5.2.0":
@@ -7673,7 +7673,7 @@ react-refresh@^0.11.0:
 
 react-router-dom@^6.20.0:
   version "6.30.3"
-  resolved "https://artifactory.xero-support.com/artifactory/api/npm/npm/react-router-dom/-/react-router-dom-6.30.3.tgz#42ae6dc4c7158bfb0b935f162b9621b29dddf740"
+  resolved "https://registry.npmjs.org/react-router-dom/-/react-router-dom-6.30.3.tgz#42ae6dc4c7158bfb0b935f162b9621b29dddf740"
   integrity sha512-pxPcv1AczD4vso7G4Z3TKcvlxK7g7TNt3/FNGMhfqyntocvYKj+GCatfigGDjbLozC4baguJ0ReCigoDJXb0ag==
   dependencies:
     "@remix-run/router" "1.23.2"
@@ -7681,7 +7681,7 @@ react-router-dom@^6.20.0:
 
 react-router@6.30.3:
   version "6.30.3"
-  resolved "https://artifactory.xero-support.com/artifactory/api/npm/npm/react-router/-/react-router-6.30.3.tgz#994b3ccdbe0e81fe84d4f998100f62584dfbf1cf"
+  resolved "https://registry.npmjs.org/react-router/-/react-router-6.30.3.tgz#994b3ccdbe0e81fe84d4f998100f62584dfbf1cf"
   integrity sha512-XRnlbKMTmktBkjCLE8/XcZFlnHvr2Ltdr1eJX4idL55/9BbORzyZEaIkBFDhFGCEWBBItsVrDxwx3gnisMitdw==
   dependencies:
     "@remix-run/router" "1.23.2"
