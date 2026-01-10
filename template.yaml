@@ -172,7 +172,7 @@ Resources:
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: "POST"
-                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${ApiConsumeItemFunction.Arn}/invocations"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiConsumeItemFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
           /items:
             options:
@@ -230,7 +230,7 @@ Resources:
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: "POST"
-                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetPantryItemsFunction.Arn}/invocations"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetPantryItemsFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
             post:
               summary: "Add a new item to the pantry"
@@ -264,7 +264,7 @@ Resources:
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: "POST"
-                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${AddItemFunction.Arn}/invocations"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AddItemFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
           /grocery-list:
             options:
@@ -322,7 +322,7 @@ Resources:
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: "POST"
-                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetGroceryListFunction.Arn}/invocations"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetGroceryListFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
           /grocery-list/{id}:
             options:
@@ -395,7 +395,7 @@ Resources:
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: "POST"
-                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${DeleteGroceryListItemFunction.Arn}/invocations"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteGroceryListItemFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
           /items/{id}:
             options:
@@ -459,7 +459,7 @@ Resources:
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: "POST"
-                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${UpdateStockFunction.Arn}/invocations"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateStockFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
 
   # API Gateway Lambda Permissions
@@ -613,10 +613,10 @@ Resources:
 Outputs:
   GroceryRestockingApiUrl:
     Description: "API Gateway endpoint URL for Prod stage"
-    Value: !Sub "https://${GroceryRestockingApi}.execute-api.us-east-1.amazonaws.com/prod/consume-item"
+    Value: !Sub "https://${GroceryRestockingApi}.execute-api.${AWS::Region}.amazonaws.com/prod/consume-item"
   ItemsEndpointUrl:
     Description: "API Gateway endpoint URL for items endpoint"
-    Value: !Sub "https://${GroceryRestockingApi}.execute-api.us-east-1.amazonaws.com/prod/items"
+    Value: !Sub "https://${GroceryRestockingApi}.execute-api.${AWS::Region}.amazonaws.com/prod/items"
   UpdateItemEndpointUrl:
     Description: "API Gateway endpoint URL for update item endpoint"
-    Value: !Sub "https://${GroceryRestockingApi}.execute-api.us-east-1.amazonaws.com/prod/items/{id}"
+    Value: !Sub "https://${GroceryRestockingApi}.execute-api.${AWS::Region}.amazonaws.com/prod/items/{id}"
