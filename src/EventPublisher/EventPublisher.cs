@@ -98,7 +98,7 @@ public class EventPublisher
         return itemName;
     }
 
-    private async Task<Document> GetGroceryEvent(string eventId, ILambdaContext context)
+    private async Task<Document?> GetGroceryEvent(string eventId, ILambdaContext context)
     {
         try
         {

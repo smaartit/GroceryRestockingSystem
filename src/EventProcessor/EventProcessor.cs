@@ -28,10 +28,10 @@ public class EventProcessor
     {
         _dynamoDbClient = new AmazonDynamoDBClient();
         _sqsClient = new AmazonSQSClient();
-        _groceryEventsTable = Environment.GetEnvironmentVariable("GROCERY_EVENTS_TABLE");
-        _groceryListTable = Environment.GetEnvironmentVariable("GROCERY_TABLE");
-        _pantryItemsTable = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE");
-        _snsTopicArn = Environment.GetEnvironmentVariable("SNS_TOPIC_ARN");
+        _groceryEventsTable = Environment.GetEnvironmentVariable("GROCERY_EVENTS_TABLE") ?? throw new InvalidOperationException("GROCERY_EVENTS_TABLE environment variable is not set");
+        _groceryListTable = Environment.GetEnvironmentVariable("GROCERY_TABLE") ?? throw new InvalidOperationException("GROCERY_TABLE environment variable is not set");
+        _pantryItemsTable = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE") ?? throw new InvalidOperationException("PANTRY_ITEMS_TABLE environment variable is not set");
+        _snsTopicArn = Environment.GetEnvironmentVariable("SNS_TOPIC_ARN") ?? throw new InvalidOperationException("SNS_TOPIC_ARN environment variable is not set");
     }
 
     public async Task FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)
@@ -39,6 +39,11 @@ public class EventProcessor
         foreach (var record in sqsEvent.Records)
         {
             var eventData = System.Text.Json.JsonSerializer.Deserialize<GroceryEvent>(record.Body);
+            if (eventData == null || string.IsNullOrEmpty(eventData.EventId))
+            {
+                Console.WriteLine($"Invalid event data in record: {record.Body}");
+                continue;
+            }
             var eventId = eventData.EventId;
 
             try
@@ -91,35 +96,39 @@ public class EventProcessor
 
         // Step 1: Get the item from PantryItems table to get its details
         var pantryTable = Table.LoadTable(_dynamoDbClient, _pantryItemsTable);
-        Document pantryItem = null;
+        Document? pantryItem = null;
         
         try
         {
-            pantryItem = await pantryTable.GetItemAsync(payload.ItemId);
+            if (!string.IsNullOrEmpty(payload.ItemId))
+            {
+                pantryItem = await pantryTable.GetItemAsync(payload.ItemId);
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error retrieving item from PantryItems: {ex.Message}");
-            throw;
+            // Continue processing with payload data if item not found
         }
         
+        string itemName;
+        string category;
+        int quantityToAdd = 1; // When marking as finished, we add 1 item to the shopping list
+
         if (pantryItem == null)
         {
             Console.WriteLine($"Item with ID {payload.ItemId} not found in PantryItems. Using payload ItemName: {payload.ItemName}");
             // If item not found, use the payload data
-            string itemName = payload.ItemName;
-            string category = "General";
-            int quantityToAdd = 1;
+            itemName = payload.ItemName ?? "Unknown";
+            category = "General";
 
             // Add to GroceryList directly
             await AddOrUpdateGroceryListItem(itemName, category, quantityToAdd);
             return;
         }
 
-        string itemName = pantryItem.ContainsKey("Name") ? pantryItem["Name"].AsString() : payload.ItemName;
-        string category = pantryItem.ContainsKey("Category") ? pantryItem["Category"].AsString() : "General";
-        // When marking as finished, we add 1 item to the shopping list
-        int quantityToAdd = 1;
+        itemName = pantryItem.ContainsKey("Name") ? pantryItem["Name"].AsString() : payload.ItemName ?? "Unknown";
+        category = pantryItem.ContainsKey("Category") ? pantryItem["Category"].AsString() : "General";
 
         Console.WriteLine($"Item details: Name={itemName}, Category={category}, QuantityToAdd={quantityToAdd}");
 
@@ -139,7 +148,7 @@ public class EventProcessor
     private async Task AddOrUpdateGroceryListItem(string itemName, string category, int quantityToAdd)
     {
         var groceryTable = Table.LoadTable(_dynamoDbClient, _groceryListTable);
-        Document existingGroceryItem = null;
+        Document? existingGroceryItem = null;
 
         try
         {
@@ -226,15 +235,15 @@ public class EventProcessor
 
     public class GroceryEvent
     {
-        public string ItemId { get; set; }
-        public string EventId { get; set; }
-        public string EventType { get; set; }
-        public string EventPayload { get; set; }
-        public string CreatedAt { get; set; }
+        public string? ItemId { get; set; }
+        public string? EventId { get; set; }
+        public string? EventType { get; set; }
+        public string? EventPayload { get; set; }
+        public string? CreatedAt { get; set; }
     }
     public class GroceryItemPayload
     {
-        public string ItemId { get; set; }
-        public string ItemName { get; set; }
+        public string? ItemId { get; set; }
+        public string? ItemName { get; set; }
     }
 }

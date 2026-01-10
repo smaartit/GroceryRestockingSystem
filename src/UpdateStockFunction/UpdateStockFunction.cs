@@ -13,7 +13,6 @@ namespace UpdateStockFunction;
 
 public class UpdateStockFunction
 {
-    private readonly IAmazonDynamoDB _dynamoDb;
     private readonly DynamoDBContext _dbContext;
 
     public UpdateStockFunction()
@@ -68,7 +67,10 @@ public class UpdateStockFunction
             }
 
             // Update the quantity of the existing item
-            existingItem.Quantity = stockUpdate.Quantity;
+            if (stockUpdate != null)
+            {
+                existingItem.Quantity = stockUpdate.Quantity;
+            }
 
             // Save the updated item back to DynamoDB
             await _dbContext.SaveAsync(existingItem);
@@ -98,13 +100,13 @@ public class UpdateStockFunction
     public class GroceryItem
     {
         [DynamoDBHashKey] // Primary key (Id)
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         [DynamoDBProperty]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [DynamoDBProperty]
-        public string Category { get; set; }
+        public string Category { get; set; } = string.Empty;
 
         [DynamoDBProperty]
         public int Quantity { get; set; }

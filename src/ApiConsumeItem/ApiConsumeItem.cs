@@ -21,7 +21,7 @@ public class ApiConsumeItem
     public ApiConsumeItem(IAmazonDynamoDB dynamoDbClient)
     {
         _dynamoDbClient = dynamoDbClient ?? throw new ArgumentNullException(nameof(dynamoDbClient));
-        _outboxTableName = Environment.GetEnvironmentVariable("OUTBOX_TABLE_NAME");
+        _outboxTableName = Environment.GetEnvironmentVariable("OUTBOX_TABLE_NAME") ?? throw new InvalidOperationException("OUTBOX_TABLE_NAME environment variable is not set");
     }
 
     public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
@@ -114,7 +114,7 @@ public class ApiConsumeItem
     }
     public class ConsumeItemRequest
     {
-        public string ItemId { get; set; }
-        public string ItemName { get; set; }
+        public string? ItemId { get; set; }
+        public string? ItemName { get; set; }
     }
 }
