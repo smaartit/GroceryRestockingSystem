@@ -78,6 +78,7 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
   // Fetch pantry items when component mounts
   useEffect(() => {
     const fetchItems = async () => {
+      setLoading(true);
       try {
         const pantryItems = await getPantryItems();
         setAllPantryItems(pantryItems); // Store all items for reference
@@ -89,11 +90,14 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
             ? err.message
             : "Error fetching pantry items";
         showMessage(errorMessage, "error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchItems();
-  }, [showMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   const updateQuantity = async (item: GroceryItem, newQuantity: number): Promise<void> => {
     if (newQuantity < 0) {
@@ -226,6 +230,10 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
     }
   };
 
+  if (loading && items.length === 0) {
+    return <div className="loading">Loading...</div>;
+  }
+
   if (items.length === 0 && !loading) {
     return (
       <div className="empty-state">
@@ -233,10 +241,6 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
         <p>Add items to your pantry to get started!</p>
       </div>
     );
-  }
-
-  if (items.length === 0) {
-    return <div className="loading">Loading...</div>;
   }
 
 

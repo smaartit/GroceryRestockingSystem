@@ -133,3 +133,25 @@ export const getGroceryList = async (): Promise<GroceryItem[]> => {
   return items as GroceryItem[];
 };
 
+// Delete an item from grocery list
+export const deleteGroceryListItem = async (itemId: string): Promise<string> => {
+  const apiBaseUrl = getApiBaseUrl();
+  const url = `${apiBaseUrl}/grocery-list/${itemId}`;
+
+  const options: RequestInit = {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to delete grocery list item");
+  }
+
+  return await response.text();
+};
+
