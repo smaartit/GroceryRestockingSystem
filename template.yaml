@@ -83,6 +83,8 @@ Resources:
       CodeUri: ./src/EventPublisher
       MemorySize: 512
       Timeout: 60
+    Metadata:
+      BuildMethod: dotnet
       Environment:
         Variables:
           GROCERY_EVENTS_TABLE: !Ref GroceryEventsTable
@@ -111,6 +113,8 @@ Resources:
       CodeUri: ./src/EventProcessor
       MemorySize: 512
       Timeout: 60
+    Metadata:
+      BuildMethod: dotnet
       Environment:
         Variables:
           GROCERY_EVENTS_TABLE: !Ref GroceryEventsTable
@@ -414,6 +418,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GroceryEventsTable
+    Metadata:
+      BuildMethod: dotnet
 
   AddItemFunction:
     Type: AWS::Serverless::Function
@@ -431,6 +437,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PantryItemsTable
+    Metadata:
+      BuildMethod: dotnet
 
   GetPantryItemsFunction:
     Type: AWS::Serverless::Function
@@ -465,6 +473,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GroceryTable
+    Metadata:
+      BuildMethod: dotnet
 
 Outputs:
   GroceryRestockingApiUrl:
