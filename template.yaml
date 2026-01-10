@@ -237,6 +237,28 @@ Resources:
                       method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
                     responseTemplates:
                       application/json: ""
+            get:
+              summary: "Get all items from the pantry"
+              operationId: "getPantryItems"
+              responses:
+                "200":
+                  description: "List of pantry items"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                  schema:
+                    type: array
+                    items:
+                      type: object
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "GET"
+                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetPantryItemsFunction.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
             post:
               summary: "Add a new item to the pantry"
               operationId: "addItem"
@@ -394,6 +416,37 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PantryItemsTable
+      Events:
+        AddItemAPI:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: POST
+            RestApiId: !Ref GroceryRestockingApi
+        AddItemOptionsAPI:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: OPTIONS
+            RestApiId: !Ref GroceryRestockingApi
+
+  GetPantryItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src/GetPantryItemsFunction
+      Handler: GetPantryItemsFunction::GetPantryItemsFunction.GetPantryItemsFunction::FunctionHandler
+      Runtime: dotnet8
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 10
+      Environment:
+        Variables:
+          PANTRY_ITEMS_TABLE: !Ref PantryItemsTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref PantryItemsTable
+
   UpdateStockFunction:
     Type: AWS::Serverless::Function
     Properties:

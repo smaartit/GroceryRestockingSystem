@@ -1,23 +1,40 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { GroceryItem, MessageType } from "../types";
-import { consumeItem as apiConsumeItem } from "../api";
+import { consumeItem as apiConsumeItem, getPantryItems } from "../api";
 
 interface MarkAsFinishedProps {
-  items: GroceryItem[];
-  setItems: React.Dispatch<React.SetStateAction<GroceryItem[]>>;
   loading: boolean;
   setLoading: (loading: boolean) => void;
   showMessage: (message: string, type: MessageType) => void;
 }
 
 const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
-  items,
-  setItems,
   loading,
   setLoading,
   showMessage,
 }) => {
-  const unfinishedItems = items.filter((i) => !i.finished);
+  const [items, setItems] = useState<GroceryItem[]>([]);
+
+  // Fetch pantry items when component mounts
+  useEffect(() => {
+    const fetchItems = async () => {
+      setLoading(true);
+      try {
+        const pantryItems = await getPantryItems();
+        setItems(pantryItems);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Error fetching pantry items";
+        showMessage(errorMessage, "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchItems();
+  }, [setLoading, showMessage]);
 
   const markAsFinished = async (item: GroceryItem): Promise<void> => {
     setLoading(true);
@@ -27,14 +44,9 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
 
       showMessage(`"${item.Name}" marked as finished!`, "success");
 
-      // Update local state to mark as finished
-      setItems(
-        items.map((i) =>
-          i.Id === item.Id
-            ? { ...i, finished: true, Quantity: Math.max(0, i.Quantity - 1) }
-            : i
-        )
-      );
+      // Refresh the pantry items list after marking as finished
+      const updatedItems = await getPantryItems();
+      setItems(updatedItems);
     } catch (err) {
       const errorMessage =
         err instanceof Error
@@ -46,21 +58,22 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
     }
   };
 
-  if (loading && unfinishedItems.length === 0) {
+  if (loading && items.length === 0) {
     return <div className="loading">Loading...</div>;
   }
 
-  if (unfinishedItems.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="empty-state">
-        <p>✅ All items are finished!</p>
+        <p>📦 No items in pantry yet.</p>
+        <p>Add items to your pantry to get started!</p>
       </div>
     );
   }
 
   return (
     <ul className="grocery-list">
-      {unfinishedItems.map((item) => (
+      {items.map((item) => (
         <li key={item.Id} className="grocery-item">
           <div className="item-info">
             <span className="item-name">{item.Name}</span>
@@ -86,7 +99,7 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
                 onClick={() => markAsFinished(item)}
                 disabled={loading}
               >
-                Finished
+                Mark as Finished
               </button>
             )}
           </div>

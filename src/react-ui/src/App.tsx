@@ -1,37 +1,11 @@
 import React, { useState } from "react";
 import "./App.css";
-import { GroceryItem, TabType, MessageType } from "./types";
+import { TabType, MessageType } from "./types";
 import AddItems from "./components/AddItems";
 import MarkAsFinished from "./components/MarkAsFinished";
 import ShoppingList from "./components/ShoppingList";
 
-// Mock data for demonstration - in production, you'd fetch from an API
-const mockItems: GroceryItem[] = [
-  {
-    Id: "1",
-    Name: "Milk",
-    Category: "Dairy",
-    Quantity: 2,
-    finished: false,
-  },
-  {
-    Id: "2",
-    Name: "Bread",
-    Category: "Bakery",
-    Quantity: 1,
-    finished: false,
-  },
-  {
-    Id: "3",
-    Name: "Eggs",
-    Category: "Dairy",
-    Quantity: 0,
-    finished: true,
-  },
-];
-
 const App: React.FC = () => {
-  const [items, setItems] = useState<GroceryItem[]>(mockItems);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -70,7 +44,7 @@ const App: React.FC = () => {
             className={"nav-link" + (activeTab === "finish" ? " active" : "")}
             onClick={() => setActiveTab("finish")}
           >
-            Mark as Finished
+            Items in Pantry
           </button>
         </li>
         <li className="nav-item">
@@ -96,8 +70,6 @@ const App: React.FC = () => {
 
       {activeTab === "finish" && (
         <MarkAsFinished
-          items={items}
-          setItems={setItems}
           loading={loading}
           setLoading={setLoading}
           showMessage={showMessage}
@@ -105,7 +77,7 @@ const App: React.FC = () => {
       )}
 
       {activeTab === "shopping" && (
-        <ShoppingList items={items} loading={loading} />
+        <ShoppingList items={[]} loading={loading} />
       )}
     </div>
   );

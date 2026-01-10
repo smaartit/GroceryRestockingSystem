@@ -87,9 +87,26 @@ export const updateItemQuantity = async (
   return apiCall<string>(`/items/${itemId}`, "PUT", requestBody);
 };
 
-// Get all items (for future use)
-export const getItems = async (): Promise<GroceryItem[]> => {
-  // This endpoint doesn't exist yet, but prepared for future implementation
-  return apiCall<GroceryItem[]>("/items", "GET");
+// Get all pantry items
+export const getPantryItems = async (): Promise<GroceryItem[]> => {
+  const apiBaseUrl = getApiBaseUrl();
+  const url = `${apiBaseUrl}/items`;
+
+  const options: RequestInit = {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to get pantry items");
+  }
+
+  const items = await response.json();
+  return items as GroceryItem[];
 };
 
