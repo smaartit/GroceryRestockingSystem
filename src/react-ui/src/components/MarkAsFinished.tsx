@@ -182,8 +182,8 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
 
       showMessage(`"${item.Name}" marked as finished!`, "success");
 
-      // Wait a bit for the event processor to update PantryItems
-      // The event goes through SQS and EventProcessor, so we need to wait
+      // Wait a bit for the stream handler to process the quantity change
+      // The PantryItemsStreamHandler processes DynamoDB stream events, so we need to wait
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Refresh the pantry items list after marking as finished

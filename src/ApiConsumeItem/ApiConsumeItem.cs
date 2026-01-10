@@ -16,12 +16,15 @@ namespace ApiConsumeItem;
 public class ApiConsumeItem
 {
     private readonly IAmazonDynamoDB _dynamoDbClient;
-    private readonly string _outboxTableName;
+    private readonly string _pantryItemsTable;
+    
     public ApiConsumeItem() : this(new AmazonDynamoDBClient()) { }
+    
     public ApiConsumeItem(IAmazonDynamoDB dynamoDbClient)
     {
         _dynamoDbClient = dynamoDbClient ?? throw new ArgumentNullException(nameof(dynamoDbClient));
-        _outboxTableName = Environment.GetEnvironmentVariable("OUTBOX_TABLE_NAME") ?? throw new InvalidOperationException("OUTBOX_TABLE_NAME environment variable is not set");
+        _pantryItemsTable = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE") 
+            ?? throw new InvalidOperationException("PANTRY_ITEMS_TABLE environment variable is not set");
     }
 
     public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
@@ -29,8 +32,9 @@ public class ApiConsumeItem
         var corsHeaders = new Dictionary<string, string>
         {
             { "Access-Control-Allow-Origin", "*" },
-            { "Access-Control-Allow-Headers", "Content-Type,Authorization" },
-            { "Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS" }
+            { "Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token" },
+            { "Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS" },
+            { "Content-Type", "application/json" }
         };
 
         // Handle CORS preflight request
@@ -74,30 +78,64 @@ public class ApiConsumeItem
 
             context.Logger.LogInformation($"Deserialized request: {JsonSerializer.Serialize(item)}");
 
-            var eventId = Guid.NewGuid().ToString();
-            var timestamp = DateTime.UtcNow.ToString("o");
-
-            var putRequest = new PutItemRequest
+            if (string.IsNullOrEmpty(item.ItemId))
             {
-                TableName = _outboxTableName,
-                Item = new Dictionary<string, AttributeValue>
+                context.Logger.LogError("ItemId is required");
+                return new APIGatewayProxyResponse
                 {
-                    { "EventId", new AttributeValue { S = eventId } },
-                    { "EventType", new AttributeValue { S = "ItemConsumed" } },
-                    { "EventPayload", new AttributeValue { S = JsonSerializer.Serialize(item) } },
-                    { "ProcessedAt", new AttributeValue { NULL = true } },
-                    { "CreatedAt", new AttributeValue { S = timestamp } }
-                }
-            };
+                    StatusCode = 400,
+                    Body = "ItemId is required",
+                    Headers = corsHeaders
+                };
+            }
 
-            await _dynamoDbClient.PutItemAsync(putRequest);
+            // Get the item from PantryItems table
+            var pantryTable = Table.LoadTable(_dynamoDbClient, _pantryItemsTable);
+            Document? pantryItem = null;
+            
+            try
+            {
+                pantryItem = await pantryTable.GetItemAsync(item.ItemId);
+            }
+            catch (Exception ex)
+            {
+                context.Logger.LogError($"Error retrieving item {item.ItemId} from PantryItems: {ex.Message}");
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = 404,
+                    Body = $"Item with ID '{item.ItemId}' not found",
+                    Headers = corsHeaders
+                };
+            }
 
-            context.Logger.LogInformation($"Event written to Outbox Table: {eventId}");
+            if (pantryItem == null)
+            {
+                context.Logger.LogError($"Item with ID {item.ItemId} not found in PantryItems");
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = 404,
+                    Body = $"Item with ID '{item.ItemId}' not found",
+                    Headers = corsHeaders
+                };
+            }
+
+            // Decrement quantity by 1 (minimum 0)
+            int currentQuantity = pantryItem.ContainsKey("Quantity") 
+                ? pantryItem["Quantity"].AsInt() 
+                : 0;
+            
+            pantryItem["Quantity"] = Math.Max(0, currentQuantity - 1);
+            
+            // Update the item in PantryItems (this will trigger the stream handler)
+            await pantryTable.PutItemAsync(pantryItem);
+
+            var itemName = pantryItem.ContainsKey("Name") ? pantryItem["Name"].AsString() : item.ItemName ?? "Unknown";
+            context.Logger.LogInformation($"Decremented quantity for item '{itemName}' (ID: {item.ItemId}) to {pantryItem["Quantity"].AsInt()}");
 
             return new APIGatewayProxyResponse
             {
                 StatusCode = 200,
-                Body = "Item consumption event stored",
+                Body = $"Item '{itemName}' consumption processed. Quantity: {pantryItem["Quantity"].AsInt()}",
                 Headers = corsHeaders
             };
         }
