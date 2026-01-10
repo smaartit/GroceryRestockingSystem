@@ -125,6 +125,25 @@
   color: #666;
 }
 
+.item-details-small {
+  display: flex;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: #666;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.item-category-small {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.item-quantity-small {
+  font-size: 0.75rem;
+  color: #666;
+}
+
 .item-quantity {
   display: flex;
   align-items: center;

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { GroceryItem, MessageType } from "../types";
 import { consumeItem as apiConsumeItem, getPantryItems } from "../api";
+import { getCategoryIcon } from "../utils/categoryIcons";
 
 interface MarkAsFinishedProps {
   loading: boolean;
@@ -14,6 +15,34 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
   showMessage,
 }) => {
   const [items, setItems] = useState<GroceryItem[]>([]);
+  const [allPantryItems, setAllPantryItems] = useState<GroceryItem[]>([]);
+
+  // Helper function to combine items with the same name
+  const combineItems = (items: GroceryItem[]): GroceryItem[] => {
+    const combinedMap = new Map<string, GroceryItem>();
+
+    items.forEach((item) => {
+      const itemName = item.Name.toLowerCase().trim();
+      const existing = combinedMap.get(itemName);
+
+      if (existing) {
+        // Combine quantities
+        existing.Quantity = (existing.Quantity || 0) + (item.Quantity || 0);
+        // Keep the first category found, or merge if different
+        if (!existing.Category && item.Category) {
+          existing.Category = item.Category;
+        }
+      } else {
+        // Create a new entry with a combined ID for reference
+        combinedMap.set(itemName, {
+          ...item,
+          Id: item.Id, // Keep the first item's ID for marking as finished
+        });
+      }
+    });
+
+    return Array.from(combinedMap.values());
+  };
 
   // Fetch pantry items when component mounts
   useEffect(() => {
@@ -21,7 +50,9 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
       setLoading(true);
       try {
         const pantryItems = await getPantryItems();
-        setItems(pantryItems);
+        setAllPantryItems(pantryItems); // Store all items for reference
+        const combinedItems = combineItems(pantryItems);
+        setItems(combinedItems);
       } catch (err) {
         const errorMessage =
           err instanceof Error
@@ -40,13 +71,28 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
     setLoading(true);
 
     try {
-      await apiConsumeItem(item.Id, item.Name);
+      // Find an actual item with this name that has quantity > 0
+      const actualItem = allPantryItems.find(
+        (pantryItem) =>
+          pantryItem.Name.toLowerCase().trim() === item.Name.toLowerCase().trim() &&
+          pantryItem.Quantity > 0
+      );
+
+      if (!actualItem) {
+        showMessage(`No items available to mark as finished for "${item.Name}"`, "error");
+        setLoading(false);
+        return;
+      }
+
+      await apiConsumeItem(actualItem.Id, actualItem.Name);
 
       showMessage(`"${item.Name}" marked as finished!`, "success");
 
       // Refresh the pantry items list after marking as finished
       const updatedItems = await getPantryItems();
-      setItems(updatedItems);
+      setAllPantryItems(updatedItems);
+      const combinedItems = combineItems(updatedItems);
+      setItems(combinedItems);
     } catch (err) {
       const errorMessage =
         err instanceof Error
@@ -73,22 +119,18 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
 
   return (
     <ul className="grocery-list">
-      {items.map((item) => (
-        <li key={item.Id} className="grocery-item">
+      {items.map((item, index) => (
+        <li key={`${item.Name}-${index}`} className="grocery-item">
           <div className="item-info">
             <span className="item-name">{item.Name}</span>
-            <div className="item-details">
+            <div className="item-details-small">
               {item.Category && (
-                <span className="item-category">📁 {item.Category}</span>
+                <span className="item-category-small">
+                  {getCategoryIcon(item.Category)} {item.Category}
+                </span>
               )}
-              <span className="item-quantity">
-                Quantity:
-                <input
-                  type="number"
-                  className="quantity-input"
-                  value={item.Quantity || 0}
-                  readOnly
-                />
+              <span className="item-quantity-small">
+                Qty: {item.Quantity || 0}
               </span>
             </div>
           </div>

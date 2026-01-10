@@ -8,19 +8,14 @@ import ShoppingList from "./components/ShoppingList";
 const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("add");
 
   const showMessage = (message: string, type: MessageType): void => {
     if (type === "error") {
       setError(message);
-      setSuccess(null);
       setTimeout(() => setError(null), 5000);
-    } else {
-      setSuccess(message);
-      setError(null);
-      setTimeout(() => setSuccess(null), 3000);
     }
+    // Success messages are silently ignored (no banner display)
   };
 
   return (
@@ -58,7 +53,6 @@ const App: React.FC = () => {
       </ul>
 
       {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
 
       {activeTab === "add" && (
         <AddItems
