@@ -20,6 +20,9 @@ const AddItems: React.FC<AddItemsProps> = ({
     quantity: 1,
   });
 
+  // Get all category names for autocomplete
+  const categories = Object.keys(groceryItemSuggestions);
+
   const handleAddItem = async (
     itemName?: string,
     category: string = "General",
@@ -70,14 +73,23 @@ const AddItems: React.FC<AddItemsProps> = ({
             setNewItem({ ...newItem, name: e.target.value })
           }
         />
-        <input
-          type="text"
-          placeholder="Category (optional)"
-          value={newItem.category}
-          onChange={(e) =>
-            setNewItem({ ...newItem, category: e.target.value })
-          }
-        />
+        <div style={{ position: "relative", flex: 1, minWidth: "150px" }}>
+          <input
+            type="text"
+            placeholder="Category (optional)"
+            value={newItem.category}
+            onChange={(e) =>
+              setNewItem({ ...newItem, category: e.target.value })
+            }
+            list="category-suggestions"
+            autoComplete="off"
+          />
+          <datalist id="category-suggestions">
+            {categories.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
+        </div>
         <input
           type="number"
           placeholder="Quantity"

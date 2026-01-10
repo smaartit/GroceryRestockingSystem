@@ -115,8 +115,26 @@ Resources:
       StageName: "prod"
       Cors:
         AllowMethods: "'GET,POST,PUT,OPTIONS'"
-        AllowHeaders: "'Content-Type,Authorization'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
+        MaxAge: "'600'"
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+        BAD_REQUEST_BODY:
+          ResponseParameters:
+            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+        BAD_REQUEST_PARAMETERS:
+          ResponseParameters:
+            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
       DefinitionBody:
         swagger: "2.0"
         info:
@@ -124,6 +142,24 @@ Resources:
           version: "1.0"
         paths:
           /consume-item:
+            options:
+              summary: "CORS preflight for consume-item"
+              operationId: "consumeItemOptions"
+              responses:
+                "200":
+                  description: "CORS preflight response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "OPTIONS"
+                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${ApiConsumeItemFunction.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
             post:
               summary: "Trigger an event for consumed item restocking"
               operationId: "consumeItem"
@@ -142,6 +178,13 @@ Resources:
               responses:
                 "200":
                   description: "Item consumption event triggered"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: "POST"
@@ -171,6 +214,12 @@ Resources:
             RestApiId: !Ref GroceryRestockingApi
             Path: /consume-item
             Method: post
+        ApiOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GroceryRestockingApi
+            Path: /consume-item
+            Method: OPTIONS
 
   AddItemFunction:
     Type: AWS::Serverless::Function
@@ -194,6 +243,13 @@ Resources:
           Properties:
             Path: /items
             Method: POST
+            RestApiId: !Ref GroceryRestockingApi
+        AddItemOptionsAPI:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: OPTIONS
+            RestApiId: !Ref GroceryRestockingApi
   UpdateStockFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -214,6 +270,13 @@ Resources:
           Properties:
             Path: /items/{id}
             Method: PUT
+            RestApiId: !Ref GroceryRestockingApi
+        UpdateStockOptionsAPI:
+          Type: Api
+          Properties:
+            Path: /items/{id}
+            Method: OPTIONS
+            RestApiId: !Ref GroceryRestockingApi
 
 Outputs:
   GroceryRestockingApiUrl:
