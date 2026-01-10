@@ -7,12 +7,16 @@ interface MarkAsFinishedProps {
   loading: boolean;
   setLoading: (loading: boolean) => void;
   showMessage: (message: string, type: MessageType) => void;
+  showProcessingMessage?: (message: string) => void;
+  clearProcessingMessage?: () => void;
 }
 
 const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
   loading,
   setLoading,
   showMessage,
+  showProcessingMessage,
+  clearProcessingMessage,
 }) => {
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [allPantryItems, setAllPantryItems] = useState<GroceryItem[]>([]);
@@ -180,19 +184,18 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
       // Call consume-item endpoint to mark as finished and add to grocery list
       await apiConsumeItem(actualItem.Id, actualItem.Name);
 
-      showMessage(`"${item.Name}" marked as finished!`, "success");
-
-      // Wait a bit for the stream handler to process the quantity change
-      // The PantryItemsStreamHandler processes DynamoDB stream events, so we need to wait
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      // Show processing message
+      showProcessingMessage?.("Processing... Your shopping list will update shortly.");
+      
       // Refresh the pantry items list after marking as finished
-      // Retry a few times in case the event is still processing
+      // Poll for updates since stream handler processes asynchronously
       let updatedItems: GroceryItem[] = [];
       let retries = 0;
-      const maxRetries = 3; // Reduced retries since cache is now longer
+      const maxRetries = 5;
+      const retryDelay = 1000; // 1 second between retries
       
       while (retries < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
         updatedItems = await getPantryItems();
         const combinedItems = combineItems(updatedItems);
         const updatedItem = combinedItems.find(i => 
@@ -202,19 +205,27 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
         // Check if the quantity was actually updated
         const expectedQuantity = Math.max(0, (item.Quantity || 0) - 1);
         if (updatedItem && updatedItem.Quantity === expectedQuantity) {
+          setAllPantryItems(updatedItems);
+          setItems(combinedItems);
+          clearProcessingMessage?.();
+          showMessage(`"${item.Name}" marked as finished!`, "success");
           break;
         }
         
-        if (retries < maxRetries - 1) {
-          // Wait shorter time on each retry
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
         retries++;
+        if (retries < maxRetries) {
+          showProcessingMessage?.(`Processing... Updates may take a few seconds (${retries + 1}/${maxRetries})`);
+        }
       }
       
-      setAllPantryItems(updatedItems);
-      const finalCombinedItems = combineItems(updatedItems);
-      setItems(finalCombinedItems);
+      if (retries >= maxRetries) {
+        // Final refresh even if quantity didn't match
+        setAllPantryItems(updatedItems);
+        const finalCombinedItems = combineItems(updatedItems);
+        setItems(finalCombinedItems);
+        clearProcessingMessage?.();
+        showMessage(`"${item.Name}" marked as finished! Updates may take a few more seconds to appear.`, "success");
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error

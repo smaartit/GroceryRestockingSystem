@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { GroceryItem } from "../types";
 import { getGroceryList, addItem, deleteGroceryListItem } from "../api";
 
@@ -6,29 +6,50 @@ interface ShoppingListProps {
   loading: boolean;
   setLoading: (loading: boolean) => void;
   showMessage: (message: string, type: "error" | "success") => void;
+  showProcessingMessage?: (message: string) => void;
+  clearProcessingMessage?: () => void;
 }
 
-const ShoppingList: React.FC<ShoppingListProps> = ({ loading, setLoading, showMessage }) => {
+const ShoppingList: React.FC<ShoppingListProps> = ({ 
+  loading, 
+  setLoading, 
+  showMessage,
+  showProcessingMessage,
+  clearProcessingMessage,
+}) => {
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [isRestocking, setIsRestocking] = useState<boolean>(false);
 
-  useEffect(() => {
-    fetchGroceryList();
-  }, []);
-
-  const fetchGroceryList = async () => {
-    setLoading(true);
+  const fetchGroceryList = useCallback(async (silent: boolean = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const groceryItems = await getGroceryList();
       setItems(groceryItems);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load grocery list";
-      showMessage(errorMessage, "error");
+      if (!silent) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to load grocery list";
+        showMessage(errorMessage, "error");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, [setLoading, showMessage]);
+
+  useEffect(() => {
+    fetchGroceryList();
+    
+    // Poll for updates every 2 seconds to catch items marked as finished (silent refresh)
+    const pollInterval = setInterval(() => {
+      fetchGroceryList(true); // Silent refresh - don't show loading spinner
+    }, 2000);
+    
+    return () => clearInterval(pollInterval);
+  }, [fetchGroceryList]);
 
   const handleCheckboxChange = (itemId: string) => {
     setCheckedItems((prev) => {
@@ -86,6 +107,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ loading, setLoading, showMe
         .map((result, index) => ({ result, item: selectedItems[index] }))
         .filter(({ result }) => result.status === "rejected");
 
+      if (restockFailures.length > 0) {
+        const failedItems = restockFailures.map(({ item }) => item.Name).join(", ");
+        showMessage(`Failed to add to pantry: ${failedItems}`, "error");
+      }
+
       // Check for failures in deletion
       const deleteFailures = deleteResults
         .map((result, index) => ({ result, item: selectedItems[index] }))
@@ -110,8 +136,16 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ loading, setLoading, showMe
       // Clear checked items
       setCheckedItems(new Set());
 
+      // Show processing message
+      showProcessingMessage?.("Processing... Items are being added to your pantry. Updates may take a few seconds.");
+
       // Refresh the grocery list to show updated list
       await fetchGroceryList();
+      
+      // Clear processing message after a short delay
+      setTimeout(() => {
+        clearProcessingMessage?.();
+      }, 2000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to restock items";
       showMessage(errorMessage, "error");

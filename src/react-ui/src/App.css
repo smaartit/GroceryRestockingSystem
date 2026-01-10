@@ -23,6 +23,43 @@
   font-size: 0.9rem;
 }
 
+.nav {
+  display: flex;
+  list-style: none;
+  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+.nav-item {
+  margin-right: 10px;
+}
+
+.nav-link {
+  display: block;
+  padding: 12px 20px;
+  text-decoration: none;
+  color: #666;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s;
+  font-weight: 500;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+}
+
+.nav-link:hover {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+.nav-link.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  font-weight: 600;
+}
+
 .add-item-form {
   display: flex;
   gap: 10px;
@@ -256,6 +293,46 @@
 
 .buy-again-button:hover {
   background: #e0a800;
+}
+
+.processing-message {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.processing-spinner {
+  display: inline-block;
+  animation: pulse 1.5s ease-in-out infinite;
+  font-size: 1.2rem;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .error-message {

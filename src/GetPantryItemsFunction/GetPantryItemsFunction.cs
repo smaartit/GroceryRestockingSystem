@@ -19,7 +19,7 @@ public class GetPantryItemsFunction
     // Cache for pantry items (shared across invocations in the same container)
     private static List<Dictionary<string, object>>? _cachedItems = null;
     private static DateTime _cacheTimestamp = DateTime.MinValue;
-    private static readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30); // Cache for 30 seconds to balance performance and freshness
+    private static readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(10); // Cache for 10 seconds for faster updates
     
     public GetPantryItemsFunction()
     {

@@ -7,12 +7,16 @@ interface AddItemsProps {
   loading: boolean;
   setLoading: (loading: boolean) => void;
   showMessage: (message: string, type: MessageType) => void;
+  showProcessingMessage?: (message: string) => void;
+  clearProcessingMessage?: () => void;
 }
 
 const AddItems: React.FC<AddItemsProps> = ({
   loading,
   setLoading,
   showMessage,
+  showProcessingMessage,
+  clearProcessingMessage,
 }) => {
   const [newItem, setNewItem] = useState<NewItemForm>({
     name: "",
