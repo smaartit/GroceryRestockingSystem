@@ -62,23 +62,29 @@ const AddItems: React.FC<AddItemsProps> = ({
       return;
     }
 
+    const itemQuantity = quantity || parseInt(String(newItem.quantity)) || 1;
+    const itemCategory = category || newItem.category || "General";
+
+    // Store previous state for rollback on error
+    const previousItems = [...pantryItems];
+    const previousQuantityMap = { ...pantryQuantityMap };
+
     setLoading(true);
 
     try {
-      await apiAddItem(
-        nameToAdd,
-        category || newItem.category || "General",
-        quantity || parseInt(String(newItem.quantity)) || 1
-      );
+      // Optimistically update UI immediately for better UX
+      const tempItem: GroceryItem = {
+        Id: `temp-${Date.now()}`,
+        Name: nameToAdd,
+        Category: itemCategory,
+        Quantity: itemQuantity,
+        finished: false,
+      };
+      const optimisticItems = [...pantryItems, tempItem];
+      setPantryItems(optimisticItems);
+      updatePantryQuantityMap(optimisticItems);
 
-      showMessage(`"${nameToAdd}" added successfully!`, "success");
-
-      // Refresh pantry items to update quantities
-      const updatedItems = await getPantryItems();
-      setPantryItems(updatedItems);
-      updatePantryQuantityMap(updatedItems);
-
-      // Reset form only if called from manual input
+      // Reset form early (optimistic update)
       if (!itemName) {
         setNewItem({
           name: "",
@@ -86,7 +92,27 @@ const AddItems: React.FC<AddItemsProps> = ({
           quantity: 1,
         });
       }
+
+      // Make the actual API call
+      await apiAddItem(nameToAdd, itemCategory, itemQuantity);
+
+      showMessage(`"${nameToAdd}" added successfully!`, "success");
+
+      // Fetch fresh data in background (non-blocking)
+      getPantryItems()
+        .then((updatedItems) => {
+          setPantryItems(updatedItems);
+          updatePantryQuantityMap(updatedItems);
+        })
+        .catch((err) => {
+          console.error("Background refresh failed:", err);
+          // Don't show error to user since item was already added
+        });
     } catch (err) {
+      // Revert optimistic update on error
+      setPantryItems(previousItems);
+      updatePantryQuantityMap(previousItems);
+      
       const errorMessage =
         err instanceof Error ? err.message : "Error adding item";
       showMessage(errorMessage, "error");

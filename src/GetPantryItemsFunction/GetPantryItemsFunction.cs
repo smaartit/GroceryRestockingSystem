@@ -1,11 +1,11 @@
 using Amazon.DynamoDBv2;
-using Amazon.DynamoDBv2.DataModel;
+using Amazon.DynamoDBv2.Model;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.Serialization.SystemTextJson;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 [assembly: LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
@@ -13,14 +13,12 @@ namespace GetPantryItemsFunction;
 
 public class GetPantryItemsFunction
 {
-    private readonly IAmazonDynamoDB _dynamoDb;
-    private readonly DynamoDBContext _dbContext;
-
+    // Static client to reuse across Lambda invocations (container reuse)
+    private static readonly IAmazonDynamoDB _dynamoDbClient = new AmazonDynamoDBClient();
+    
     public GetPantryItemsFunction()
     {
-        // Setup DynamoDB client and context
-        var client = new AmazonDynamoDBClient();
-        _dbContext = new DynamoDBContext(client);
+        // Client is static, no need to initialize here
     }
 
     public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
@@ -45,40 +43,48 @@ public class GetPantryItemsFunction
 
         try
         {
-            // Scan items from PantryItems table with pagination to avoid memory issues
-            var scanConditions = new List<ScanCondition>();
-            var scanOperationConfig = new DynamoDBOperationConfig
+            var tableName = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE");
+            context.Logger.LogInformation($"Scanning table: {tableName}");
+            
+            // Use low-level DynamoDB client for better performance
+            // Scan with pagination to handle large tables efficiently
+            var responseItems = new List<Dictionary<string, object>>();
+            var request = new ScanRequest
             {
-                OverrideTableName = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE")
+                TableName = tableName,
+                Limit = 100 // Process in batches of 100 items
             };
             
-            // Use paginated scan to process items in batches and avoid loading everything into memory
-            var responseItems = new List<object>();
-            var asyncSearch = _dbContext.ScanAsync<PantryItem>(scanConditions, scanOperationConfig);
-            
-            // Process items in batches to reduce memory usage
             do
             {
-                var batch = await asyncSearch.GetNextSetAsync();
-                foreach (var item in batch)
+                var scanResponse = await _dynamoDbClient.ScanAsync(request);
+                
+                // Process each item in the batch
+                foreach (var item in scanResponse.Items)
                 {
-                    responseItems.Add(new
+                    var itemDict = new Dictionary<string, object>
                     {
-                        Id = item.Id,
-                        Name = item.Name,
-                        Category = item.Category,
-                        Quantity = item.Quantity,
-                        Price = item.Price,
-                        finished = false // Pantry items are not finished by default
-                    });
+                        { "Id", item.ContainsKey("Id") && item["Id"].S != null ? item["Id"].S : "" },
+                        { "Name", item.ContainsKey("Name") && item["Name"].S != null ? item["Name"].S : "" },
+                        { "Category", item.ContainsKey("Category") && item["Category"].S != null ? item["Category"].S : "" },
+                        { "Quantity", item.ContainsKey("Quantity") && item["Quantity"].N != null ? int.Parse(item["Quantity"].N) : 0 },
+                        { "Price", item.ContainsKey("Price") && item["Price"].N != null ? double.Parse(item["Price"].N) : 0.0 },
+                        { "finished", false } // Pantry items are not finished by default
+                    };
+                    responseItems.Add(itemDict);
                 }
-            } while (!asyncSearch.IsDone);
+                
+                // Continue with next page if available
+                request.ExclusiveStartKey = scanResponse.LastEvaluatedKey;
+            } while (request.ExclusiveStartKey != null && request.ExclusiveStartKey.Count > 0);
+            
+            context.Logger.LogInformation($"Retrieved {responseItems.Count} items from table");
 
             // Return success response with CORS headers
             var response = new APIGatewayProxyResponse
             {
                 StatusCode = 200,
-                Body = System.Text.Json.JsonSerializer.Serialize(responseItems),
+                Body = JsonSerializer.Serialize(responseItems),
                 Headers = corsHeaders
             };
             
@@ -94,32 +100,14 @@ public class GetPantryItemsFunction
         {
             // Handle errors and return error response
             context.Logger.LogLine($"Error getting pantry items: {ex.Message}");
+            context.Logger.LogLine($"Stack trace: {ex.StackTrace}");
             return new APIGatewayProxyResponse
             {
                 StatusCode = 500,
-                Body = "Failed to get pantry items",
+                Body = $"Failed to get pantry items: {ex.Message}",
                 Headers = corsHeaders
             };
         }
-    }
-
-    [DynamoDBTable("PantryItems")]
-    public class PantryItem
-    {
-        [DynamoDBHashKey] // The primary key for DynamoDB table
-        public string Id { get; set; }
-
-        [DynamoDBProperty]
-        public string Name { get; set; }
-
-        [DynamoDBProperty]
-        public string Category { get; set; }
-
-        [DynamoDBProperty]
-        public int Quantity { get; set; }
-
-        [DynamoDBProperty]
-        public double Price { get; set; }
     }
 }
 

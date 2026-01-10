@@ -1,11 +1,11 @@
 ﻿using Amazon.DynamoDBv2;
-using Amazon.DynamoDBv2.DataModel;
+using Amazon.DynamoDBv2.Model;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.Serialization.SystemTextJson;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 [assembly: LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
@@ -13,14 +13,12 @@ namespace AddItemFunction;
 
 public class AddItemFunction
 {
-    private readonly IAmazonDynamoDB _dynamoDb;
-    private readonly DynamoDBContext _dbContext;
-
+    // Static client to reuse across Lambda invocations (container reuse)
+    private static readonly IAmazonDynamoDB _dynamoDbClient = new AmazonDynamoDBClient();
+    
     public AddItemFunction()
     {
-        // Setup DynamoDB client and context
-        var client = new AmazonDynamoDBClient();
-        _dbContext = new DynamoDBContext(client);
+        // Client is static, no need to initialize here
     }
 
     public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
@@ -47,10 +45,9 @@ public class AddItemFunction
         {
             // Parse the incoming request body
             var requestBody = request.Body;
-            var item = System.Text.Json.JsonSerializer.Deserialize<PantryItem>(requestBody);
+            var itemRequest = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(requestBody);
 
-            // Validate required fields
-            if (string.IsNullOrWhiteSpace(item.Name))
+            if (itemRequest == null || !itemRequest.ContainsKey("Name"))
             {
                 return new APIGatewayProxyResponse
                 {
@@ -60,29 +57,77 @@ public class AddItemFunction
                 };
             }
 
-            // Create a unique Id for the pantry item (e.g., GUID)
-            item.Id = Guid.NewGuid().ToString();
-
-            // Set default quantity to 1 if not specified or is 0
-            if (item.Quantity <= 0)
+            var itemNameValue = itemRequest["Name"];
+            if (itemNameValue.ValueKind != JsonValueKind.String)
             {
-                item.Quantity = 1;
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = 400,
+                    Body = "Item name must be a string",
+                    Headers = corsHeaders
+                };
+            }
+            
+            var itemName = itemNameValue.GetString();
+            if (string.IsNullOrWhiteSpace(itemName))
+            {
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = 400,
+                    Body = "Item name cannot be empty",
+                    Headers = corsHeaders
+                };
             }
 
-            // Set default category if not specified
-            if (string.IsNullOrWhiteSpace(item.Category))
+            // Create a unique Id for the pantry item
+            var itemId = Guid.NewGuid().ToString();
+            
+            // Parse other fields with defaults
+            string category = "General";
+            if (itemRequest.ContainsKey("Category") && itemRequest["Category"].ValueKind == JsonValueKind.String)
             {
-                item.Category = "General";
+                var categoryValue = itemRequest["Category"].GetString();
+                if (!string.IsNullOrWhiteSpace(categoryValue))
+                {
+                    category = categoryValue;
+                }
             }
 
-            // Save the item to PantryItems table
-            await _dbContext.SaveAsync(item);
+            var quantity = itemRequest.ContainsKey("Quantity") && itemRequest["Quantity"].ValueKind == JsonValueKind.Number
+                ? itemRequest["Quantity"].GetInt32()
+                : 1;
+            if (quantity <= 0)
+            {
+                quantity = 1;
+            }
+
+            var price = itemRequest.ContainsKey("Price") && itemRequest["Price"].ValueKind == JsonValueKind.Number
+                ? itemRequest["Price"].GetDouble()
+                : 0.0;
+
+            var tableName = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE");
+            
+            // Use low-level DynamoDB client for better performance
+            var putRequest = new PutItemRequest
+            {
+                TableName = tableName,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    { "Id", new AttributeValue { S = itemId } },
+                    { "Name", new AttributeValue { S = itemName } },
+                    { "Category", new AttributeValue { S = category } },
+                    { "Quantity", new AttributeValue { N = quantity.ToString() } },
+                    { "Price", new AttributeValue { N = price.ToString("F2") } }
+                }
+            };
+
+            await _dynamoDbClient.PutItemAsync(putRequest);
 
             // Return success response
             return new APIGatewayProxyResponse
             {
                 StatusCode = 200,
-                Body = $"Item '{item.Name}' added successfully",
+                Body = $"Item '{itemName}' added successfully",
                 Headers = corsHeaders
             };
         }
@@ -90,30 +135,13 @@ public class AddItemFunction
         {
             // Handle errors and return error response
             context.Logger.LogLine($"Error adding item: {ex.Message}");
+            context.Logger.LogLine($"Stack trace: {ex.StackTrace}");
             return new APIGatewayProxyResponse
             {
                 StatusCode = 500,
-                Body = "Failed to add item",
+                Body = $"Failed to add item: {ex.Message}",
                 Headers = corsHeaders
             };
         }
-    }
-    [DynamoDBTable("PantryItems")]
-    public class PantryItem
-    {
-        [DynamoDBHashKey] // The primary key for DynamoDB table
-        public string Id { get; set; }
-
-        [DynamoDBProperty]
-        public string Name { get; set; }
-
-        [DynamoDBProperty]
-        public string Category { get; set; }
-
-        [DynamoDBProperty]
-        public int Quantity { get; set; }
-
-        [DynamoDBProperty]
-        public double Price { get; set; }
     }
 }
