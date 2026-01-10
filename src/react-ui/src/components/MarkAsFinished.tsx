@@ -142,12 +142,10 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
   };
 
   const markAsFinished = async (item: GroceryItem): Promise<void> => {
-    console.log("markAsFinished called for item:", item);
     const itemKey = `${item.Name}-${item.Category}`;
     setMarkingItems((prev) => new Set(prev).add(itemKey));
 
     try {
-      console.log("Looking for actual item. allPantryItems count:", allPantryItems.length);
       // Find an actual item with this name that has quantity > 0
       const actualItem = allPantryItems.find(
         (pantryItem) =>
@@ -155,10 +153,7 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
           pantryItem.Quantity > 0
       );
 
-      console.log("Found actualItem:", actualItem);
-
       if (!actualItem) {
-        console.warn(`No items available to mark as finished for "${item.Name}"`);
         showMessage(`No items available to mark as finished for "${item.Name}"`, "error");
         setMarkingItems((prev) => {
           const newSet = new Set(prev);
@@ -168,22 +163,55 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
         return;
       }
 
-      console.log("Calling apiConsumeItem with:", { id: actualItem.Id, name: actualItem.Name });
+      // Optimistically update the UI immediately
+      const currentCombinedItems = [...items];
+      const itemToUpdate = currentCombinedItems.find(i => 
+        i.Name.toLowerCase().trim() === item.Name.toLowerCase().trim()
+      );
+      if (itemToUpdate) {
+        itemToUpdate.Quantity = Math.max(0, (itemToUpdate.Quantity || 0) - 1);
+        setItems([...currentCombinedItems]);
+      }
+      
       // Call consume-item endpoint to mark as finished and add to grocery list
-      const result = await apiConsumeItem(actualItem.Id, actualItem.Name);
-      console.log("apiConsumeItem result:", result);
+      await apiConsumeItem(actualItem.Id, actualItem.Name);
 
       showMessage(`"${item.Name}" marked as finished!`, "success");
 
+      // Wait a bit for the event processor to update PantryItems
+      // The event goes through SQS and EventProcessor, so we need to wait
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       // Refresh the pantry items list after marking as finished
-      console.log("Refreshing pantry items...");
-      const updatedItems = await getPantryItems();
+      // Retry a few times in case the event is still processing
+      let updatedItems: GroceryItem[] = [];
+      let retries = 0;
+      const maxRetries = 3; // Reduced retries since cache is now longer
+      
+      while (retries < maxRetries) {
+        updatedItems = await getPantryItems();
+        const combinedItems = combineItems(updatedItems);
+        const updatedItem = combinedItems.find(i => 
+          i.Name.toLowerCase().trim() === item.Name.toLowerCase().trim()
+        );
+        
+        // Check if the quantity was actually updated
+        const expectedQuantity = Math.max(0, (item.Quantity || 0) - 1);
+        if (updatedItem && updatedItem.Quantity === expectedQuantity) {
+          break;
+        }
+        
+        if (retries < maxRetries - 1) {
+          // Wait shorter time on each retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        retries++;
+      }
+      
       setAllPantryItems(updatedItems);
-      const combinedItems = combineItems(updatedItems);
-      setItems(combinedItems);
-      console.log("Pantry items refreshed");
+      const finalCombinedItems = combineItems(updatedItems);
+      setItems(finalCombinedItems);
     } catch (err) {
-      console.error("Error in markAsFinished:", err);
       const errorMessage =
         err instanceof Error
           ? err.message
@@ -279,9 +307,8 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Finished button clicked for:", item);
-                          markAsFinished(item).catch((err) => {
-                            console.error("Unhandled error in markAsFinished:", err);
+                          markAsFinished(item).catch(() => {
+                            // Error is already handled in markAsFinished
                           });
                         }}
                         disabled={isMarking}

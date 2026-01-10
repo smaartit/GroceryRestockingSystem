@@ -505,8 +505,8 @@ Resources:
       Runtime: dotnet8
       Architectures:
         - x86_64
-      MemorySize: 256
-      Timeout: 10
+      MemorySize: 512
+      Timeout: 30
       Environment:
         Variables:
           PANTRY_ITEMS_TABLE: !Ref PantryItemsTable
@@ -522,8 +522,8 @@ Resources:
       Runtime: dotnet8
       Architectures:
         - x86_64
-      MemorySize: 256
-      Timeout: 10
+      MemorySize: 512
+      Timeout: 30
       Environment:
         Variables:
           GROCERY_TABLE: !Ref GroceryTable

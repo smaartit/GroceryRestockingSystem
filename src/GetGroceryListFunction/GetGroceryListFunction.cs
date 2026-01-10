@@ -19,7 +19,7 @@ public class GetGroceryListFunction
     // Cache for grocery list items (shared across invocations in the same container)
     private static List<Dictionary<string, object>>? _cachedItems = null;
     private static DateTime _cacheTimestamp = DateTime.MinValue;
-    private static readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30); // Cache for 30 seconds
+    private static readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5); // Cache for 5 minutes to reduce DB calls
     
     public GetGroceryListFunction()
     {
@@ -72,12 +72,12 @@ public class GetGroceryListFunction
             context.Logger.LogInformation($"Cache expired or missing. Scanning table: {tableName}");
             
             // Use low-level DynamoDB client for better performance
-            // Scan with pagination to handle large tables efficiently
+            // Scan with larger page size for better performance
             var responseItems = new List<Dictionary<string, object>>();
             var scanRequest = new ScanRequest
             {
                 TableName = tableName,
-                Limit = 100 // Process in batches of 100 items
+                Limit = 1000 // Increased page size for fewer round trips
             };
             
             do
