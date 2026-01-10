@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { GroceryItem, MessageType } from "../types";
-import { consumeItem as apiConsumeItem, getPantryItems } from "../api";
+import { consumeItem as apiConsumeItem, getPantryItems, addItem as apiAddItem } from "../api";
 import { getCategoryIcon } from "../utils/categoryIcons";
 
 interface MarkAsFinishedProps {
@@ -16,6 +16,8 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
 }) => {
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [allPantryItems, setAllPantryItems] = useState<GroceryItem[]>([]);
+  const [markingItems, setMarkingItems] = useState<Set<string>>(new Set());
+  const [updatingQuantities, setUpdatingQuantities] = useState<Set<string>>(new Set());
 
   // Helper function to combine items with the same name
   const combineItems = (items: GroceryItem[]): GroceryItem[] => {
@@ -76,7 +78,6 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
   // Fetch pantry items when component mounts
   useEffect(() => {
     const fetchItems = async () => {
-      setLoading(true);
       try {
         const pantryItems = await getPantryItems();
         setAllPantryItems(pantryItems); // Store all items for reference
@@ -88,36 +89,25 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
             ? err.message
             : "Error fetching pantry items";
         showMessage(errorMessage, "error");
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchItems();
-  }, [setLoading, showMessage]);
+  }, [showMessage]);
 
-  const markAsFinished = async (item: GroceryItem): Promise<void> => {
-    setLoading(true);
+  const updateQuantity = async (item: GroceryItem, newQuantity: number): Promise<void> => {
+    if (newQuantity < 0) {
+      return; // Don't allow negative quantities
+    }
+
+    const itemKey = `${item.Name}-${item.Category}`;
+    setUpdatingQuantities((prev) => new Set(prev).add(itemKey));
 
     try {
-      // Find an actual item with this name that has quantity > 0
-      const actualItem = allPantryItems.find(
-        (pantryItem) =>
-          pantryItem.Name.toLowerCase().trim() === item.Name.toLowerCase().trim() &&
-          pantryItem.Quantity > 0
-      );
+      // Call addItem endpoint to update the item with new quantity
+      await apiAddItem(item.Name, item.Category || "General", newQuantity);
 
-      if (!actualItem) {
-        showMessage(`No items available to mark as finished for "${item.Name}"`, "error");
-        setLoading(false);
-        return;
-      }
-
-      await apiConsumeItem(actualItem.Id, actualItem.Name);
-
-      showMessage(`"${item.Name}" marked as finished!`, "success");
-
-      // Refresh the pantry items list after marking as finished
+      // Refresh the pantry items list after updating quantity
       const updatedItems = await getPantryItems();
       setAllPantryItems(updatedItems);
       const combinedItems = combineItems(updatedItems);
@@ -126,18 +116,89 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Error marking item as finished";
+          : "Error updating quantity";
       showMessage(errorMessage, "error");
     } finally {
-      setLoading(false);
+      setUpdatingQuantities((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(itemKey);
+        return newSet;
+      });
     }
   };
 
-  if (loading && items.length === 0) {
-    return <div className="loading">Loading...</div>;
-  }
+  const handleQuantityChange = async (item: GroceryItem, delta: number): Promise<void> => {
+    const newQuantity = Math.max(0, (item.Quantity || 0) + delta);
+    if (newQuantity !== item.Quantity) {
+      await updateQuantity(item, newQuantity);
+    }
+  };
 
-  if (items.length === 0) {
+  const handleQuantityInputChange = async (item: GroceryItem, value: string): Promise<void> => {
+    const newQuantity = Math.max(0, parseInt(value) || 0);
+    if (newQuantity !== item.Quantity) {
+      await updateQuantity(item, newQuantity);
+    }
+  };
+
+  const markAsFinished = async (item: GroceryItem): Promise<void> => {
+    console.log("markAsFinished called for item:", item);
+    const itemKey = `${item.Name}-${item.Category}`;
+    setMarkingItems((prev) => new Set(prev).add(itemKey));
+
+    try {
+      console.log("Looking for actual item. allPantryItems count:", allPantryItems.length);
+      // Find an actual item with this name that has quantity > 0
+      const actualItem = allPantryItems.find(
+        (pantryItem) =>
+          pantryItem.Name.toLowerCase().trim() === item.Name.toLowerCase().trim() &&
+          pantryItem.Quantity > 0
+      );
+
+      console.log("Found actualItem:", actualItem);
+
+      if (!actualItem) {
+        console.warn(`No items available to mark as finished for "${item.Name}"`);
+        showMessage(`No items available to mark as finished for "${item.Name}"`, "error");
+        setMarkingItems((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(itemKey);
+          return newSet;
+        });
+        return;
+      }
+
+      console.log("Calling apiConsumeItem with:", { id: actualItem.Id, name: actualItem.Name });
+      // Call consume-item endpoint to mark as finished and add to grocery list
+      const result = await apiConsumeItem(actualItem.Id, actualItem.Name);
+      console.log("apiConsumeItem result:", result);
+
+      showMessage(`"${item.Name}" marked as finished!`, "success");
+
+      // Refresh the pantry items list after marking as finished
+      console.log("Refreshing pantry items...");
+      const updatedItems = await getPantryItems();
+      setAllPantryItems(updatedItems);
+      const combinedItems = combineItems(updatedItems);
+      setItems(combinedItems);
+      console.log("Pantry items refreshed");
+    } catch (err) {
+      console.error("Error in markAsFinished:", err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Error marking item as finished";
+      showMessage(errorMessage, "error");
+    } finally {
+      setMarkingItems((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(itemKey);
+        return newSet;
+      });
+    }
+  };
+
+  if (items.length === 0 && !loading) {
     return (
       <div className="empty-state">
         <p>📦 No items in pantry yet.</p>
@@ -145,6 +206,11 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
       </div>
     );
   }
+
+  if (items.length === 0) {
+    return <div className="loading">Loading...</div>;
+  }
+
 
   // Group items by category
   const itemsByCategory = groupItemsByCategory(items);
@@ -163,25 +229,65 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
             {getCategoryIcon(category)} {category}
           </h3>
           <div className="items-grid">
-            {itemsByCategory[category].map((item, index) => (
-              <div key={`${item.Name}-${index}`} className="suggestion-item">
-                <span className="item-name-small">
-                  {item.Name}
-                  {item.Quantity > 0 && (
-                    <span className="pantry-quantity-badge">{item.Quantity}</span>
-                  )}
-                </span>
-                {item.Quantity > 0 && (
-                  <button
-                    className="btn btn-sm btn-primary add-item-btn"
-                    onClick={() => markAsFinished(item)}
-                    disabled={loading}
-                  >
-                    Mark as Finished
-                  </button>
-                )}
-              </div>
-            ))}
+            {itemsByCategory[category].map((item, index) => {
+              const itemKey = `${item.Name}-${item.Category}`;
+              const isUpdating = updatingQuantities.has(itemKey);
+              const isMarking = markingItems.has(itemKey);
+              const currentQuantity = item.Quantity || 0;
+
+              return (
+                <div key={`${item.Name}-${index}`} className="suggestion-item-vertical">
+                  <div className="item-name-line">
+                    <span className="item-name-small">{item.Name}</span>
+                  </div>
+                  <div className="item-actions-line">
+                    <div className="quantity-controls">
+                      <button
+                        className="quantity-btn quantity-decrement"
+                        onClick={() => handleQuantityChange(item, -1)}
+                        disabled={isUpdating || currentQuantity <= 0 || isMarking}
+                        aria-label="Decrease quantity"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        className="quantity-input-small"
+                        value={currentQuantity}
+                        min="0"
+                        onChange={(e) => handleQuantityInputChange(item, e.target.value)}
+                        disabled={isUpdating || isMarking}
+                      />
+                      <button
+                        className="quantity-btn quantity-increment"
+                        onClick={() => handleQuantityChange(item, 1)}
+                        disabled={isUpdating || isMarking}
+                        aria-label="Increase quantity"
+                      >
+                        +
+                      </button>
+                    </div>
+                    {currentQuantity > 0 && (
+                      <button
+                        className="btn btn-sm btn-primary add-item-btn"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Finished button clicked for:", item);
+                          markAsFinished(item).catch((err) => {
+                            console.error("Unhandled error in markAsFinished:", err);
+                          });
+                        }}
+                        disabled={isMarking}
+                        type="button"
+                      >
+                        {isMarking ? "Marking..." : "Finished"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}

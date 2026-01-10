@@ -65,10 +65,6 @@ const AddItems: React.FC<AddItemsProps> = ({
     const itemQuantity = quantity || parseInt(String(newItem.quantity)) || 1;
     const itemCategory = category || newItem.category || "General";
 
-    // Store previous state for rollback on error
-    const previousItems = [...pantryItems];
-    const previousQuantityMap = { ...pantryQuantityMap };
-
     setLoading(true);
 
     try {
@@ -109,9 +105,15 @@ const AddItems: React.FC<AddItemsProps> = ({
           // Don't show error to user since item was already added
         });
     } catch (err) {
-      // Revert optimistic update on error
-      setPantryItems(previousItems);
-      updatePantryQuantityMap(previousItems);
+      // Refresh from server on error to ensure consistency
+      try {
+        const refreshedItems = await getPantryItems();
+        setPantryItems(refreshedItems);
+        updatePantryQuantityMap(refreshedItems);
+      } catch (refreshErr) {
+        // If refresh fails, just log it
+        console.error("Error refreshing pantry items:", refreshErr);
+      }
       
       const errorMessage =
         err instanceof Error ? err.message : "Error adding item";

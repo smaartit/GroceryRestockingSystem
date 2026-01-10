@@ -128,10 +128,10 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GroceryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PantryItemsTable
         - DynamoDBReadPolicy:
             TableName: !Ref GroceryEventsTable
-        - DynamoDBReadPolicy:
-            TableName: !Ref PantryItemsTable
         - SNSPublishMessagePolicy:
             TopicName: !Ref GroceryRestockNotificationsTopic
 

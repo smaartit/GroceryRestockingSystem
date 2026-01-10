@@ -87,13 +87,33 @@ public class EventProcessor
             throw new ArgumentException("Invalid event payload.");
         }
 
+        Console.WriteLine($"Processing payload: ItemId={payload.ItemId}, ItemName={payload.ItemName}");
+
         // Step 1: Get the item from PantryItems table to get its details
         var pantryTable = Table.LoadTable(_dynamoDbClient, _pantryItemsTable);
-        var pantryItem = await pantryTable.GetItemAsync(payload.ItemId);
+        Document pantryItem = null;
+        
+        try
+        {
+            pantryItem = await pantryTable.GetItemAsync(payload.ItemId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error retrieving item from PantryItems: {ex.Message}");
+            throw;
+        }
         
         if (pantryItem == null)
         {
-            throw new Exception($"Item with ID {payload.ItemId} not found in PantryItems.");
+            Console.WriteLine($"Item with ID {payload.ItemId} not found in PantryItems. Using payload ItemName: {payload.ItemName}");
+            // If item not found, use the payload data
+            string itemName = payload.ItemName;
+            string category = "General";
+            int quantityToAdd = 1;
+
+            // Add to GroceryList directly
+            await AddOrUpdateGroceryListItem(itemName, category, quantityToAdd);
+            return;
         }
 
         string itemName = pantryItem.ContainsKey("Name") ? pantryItem["Name"].AsString() : payload.ItemName;
@@ -101,7 +121,23 @@ public class EventProcessor
         // When marking as finished, we add 1 item to the shopping list
         int quantityToAdd = 1;
 
-        // Step 2: Check if item exists in GroceryList by Name using GSI
+        Console.WriteLine($"Item details: Name={itemName}, Category={category}, QuantityToAdd={quantityToAdd}");
+
+        // Step 2: Add or update item in GroceryList
+        await AddOrUpdateGroceryListItem(itemName, category, quantityToAdd);
+
+        // Step 3: Decrease quantity in PantryItems (optional - marking as consumed)
+        if (pantryItem.ContainsKey("Quantity"))
+        {
+            int pantryQuantity = pantryItem["Quantity"].AsInt();
+            pantryItem["Quantity"] = Math.Max(0, pantryQuantity - 1);
+            await pantryTable.PutItemAsync(pantryItem);
+            Console.WriteLine($"Decreased quantity in PantryItems for '{itemName}' to {pantryItem["Quantity"].AsInt()}");
+        }
+    }
+
+    private async Task AddOrUpdateGroceryListItem(string itemName, string category, int quantityToAdd)
+    {
         var groceryTable = Table.LoadTable(_dynamoDbClient, _groceryListTable);
         Document existingGroceryItem = null;
 
@@ -129,6 +165,7 @@ public class EventProcessor
                 // Item exists, get the first match
                 var item = queryResponse.Items[0];
                 existingGroceryItem = Document.FromAttributeMap(item);
+                Console.WriteLine($"Found existing item in GroceryList: {itemName} with quantity {existingGroceryItem["Quantity"].AsInt()}");
             }
         }
         catch (Exception ex)
@@ -168,15 +205,6 @@ public class EventProcessor
 
             await groceryTable.PutItemAsync(newGroceryItem);
             Console.WriteLine($"Created new item '{itemName}' in GroceryList with quantity: {quantityToAdd}");
-        }
-
-        // Step 4: Decrease quantity in PantryItems (optional - marking as consumed)
-        if (pantryItem.ContainsKey("Quantity"))
-        {
-            int pantryQuantity = pantryItem["Quantity"].AsInt();
-            pantryItem["Quantity"] = Math.Max(0, pantryQuantity - 1);
-            await pantryTable.PutItemAsync(pantryItem);
-            Console.WriteLine($"Decreased quantity in PantryItems for '{itemName}' to {pantryItem["Quantity"].AsInt()}");
         }
     }
 

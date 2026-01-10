@@ -144,6 +144,73 @@
   color: #666;
 }
 
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quantity-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  color: #333;
+  line-height: 1;
+  padding: 0;
+}
+
+.quantity-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #667eea;
+}
+
+.quantity-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.quantity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantity-increment {
+  color: #28a745;
+}
+
+.quantity-decrement {
+  color: #dc3545;
+}
+
+.quantity-input-small {
+  width: 40px;
+  height: 28px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 0.9rem;
+  padding: 0 2px;
+}
+
+.quantity-input-small:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.quantity-input-small:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
 .item-quantity {
   display: flex;
   align-items: center;
@@ -308,8 +375,36 @@
   box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
 }
 
+.suggestion-item-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.suggestion-item-vertical:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+}
+
+.item-name-line {
+  width: 100%;
+}
+
+.item-actions-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
 .item-name-small {
-  font-size: 0.9rem;
+  font-size: 1.0rem;
   color: #333;
   flex: 1;
   margin-right: 10px;
@@ -317,6 +412,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  font-weight: 500;
 }
 
 .pantry-quantity-badge {

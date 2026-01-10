@@ -16,9 +16,28 @@ public class GetPantryItemsFunction
     // Static client to reuse across Lambda invocations (container reuse)
     private static readonly IAmazonDynamoDB _dynamoDbClient = new AmazonDynamoDBClient();
     
+    // Cache for pantry items (shared across invocations in the same container)
+    private static List<Dictionary<string, object>>? _cachedItems = null;
+    private static DateTime _cacheTimestamp = DateTime.MinValue;
+    private static readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30); // Cache for 30 seconds
+    
     public GetPantryItemsFunction()
     {
         // Client is static, no need to initialize here
+    }
+    
+    // Helper method to check if cache is still valid
+    private static bool IsCacheValid()
+    {
+        return _cachedItems != null && 
+               (DateTime.UtcNow - _cacheTimestamp) < _cacheExpiration;
+    }
+    
+    // Helper method to clear cache (useful for testing or forced refresh)
+    private static void ClearCache()
+    {
+        _cachedItems = null;
+        _cacheTimestamp = DateTime.MinValue;
     }
 
     public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
@@ -43,8 +62,21 @@ public class GetPantryItemsFunction
 
         try
         {
+            // Check if we have valid cached data
+            if (IsCacheValid())
+            {
+                context.Logger.LogInformation($"Returning cached items (cached at {_cacheTimestamp:yyyy-MM-dd HH:mm:ss} UTC)");
+                var cachedResponse = new APIGatewayProxyResponse
+                {
+                    StatusCode = 200,
+                    Body = JsonSerializer.Serialize(_cachedItems),
+                    Headers = corsHeaders
+                };
+                return cachedResponse;
+            }
+            
             var tableName = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE");
-            context.Logger.LogInformation($"Scanning table: {tableName}");
+            context.Logger.LogInformation($"Cache expired or missing. Scanning table: {tableName}");
             
             // Use low-level DynamoDB client for better performance
             // Scan with pagination to handle large tables efficiently
@@ -78,7 +110,11 @@ public class GetPantryItemsFunction
                 scanRequest.ExclusiveStartKey = scanResponse.LastEvaluatedKey;
             } while (scanRequest.ExclusiveStartKey != null && scanRequest.ExclusiveStartKey.Count > 0);
             
-            context.Logger.LogInformation($"Retrieved {responseItems.Count} items from table");
+            // Update cache with new data
+            _cachedItems = responseItems;
+            _cacheTimestamp = DateTime.UtcNow;
+            
+            context.Logger.LogInformation($"Retrieved {responseItems.Count} items from table and updated cache");
 
             // Return success response with CORS headers
             var response = new APIGatewayProxyResponse
