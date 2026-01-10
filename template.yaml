@@ -83,8 +83,6 @@ Resources:
       CodeUri: ./src/EventPublisher
       MemorySize: 512
       Timeout: 60
-    Metadata:
-      BuildMethod: dotnet
       Environment:
         Variables:
           GROCERY_EVENTS_TABLE: !Ref GroceryEventsTable
@@ -105,6 +103,8 @@ Resources:
               Action:
                 - sqs:SendMessage
               Resource: !GetAtt GroceryEventsQueue.Arn
+    Metadata:
+      BuildMethod: dotnet
   EventProcessor:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -113,8 +113,6 @@ Resources:
       CodeUri: ./src/EventProcessor
       MemorySize: 512
       Timeout: 60
-    Metadata:
-      BuildMethod: dotnet
       Environment:
         Variables:
           GROCERY_EVENTS_TABLE: !Ref GroceryEventsTable
@@ -128,7 +126,6 @@ Resources:
           Properties:
             Queue: !GetAtt GroceryEventsQueue.Arn
             BatchSize: 10
-
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GroceryTable
@@ -138,6 +135,8 @@ Resources:
             TableName: !Ref GroceryEventsTable
         - SNSPublishMessagePolicy:
             TopicName: !Ref GroceryRestockNotificationsTopic
+    Metadata:
+      BuildMethod: dotnet
 
   GroceryRestockingApi:
     Type: "AWS::Serverless::Api"
