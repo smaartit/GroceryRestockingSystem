@@ -254,11 +254,21 @@ Resources:
                     type: array
                     items:
                       type: object
+                "500":
+                  description: "Internal server error"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: "GET"
                 uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetPantryItemsFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
+                contentHandling: "CONVERT_TO_TEXT"
             post:
               summary: "Add a new item to the pantry"
               operationId: "addItem"

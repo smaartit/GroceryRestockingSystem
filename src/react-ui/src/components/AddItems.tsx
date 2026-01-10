@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { NewItemForm, MessageType } from "../types";
-import { addItem as apiAddItem } from "../api";
+import React, { useState, useEffect } from "react";
+import { NewItemForm, MessageType, GroceryItem } from "../types";
+import { addItem as apiAddItem, getPantryItems } from "../api";
 import { groceryItemSuggestions } from "../data/grocerySuggestions";
 
 interface AddItemsProps {
@@ -19,9 +19,37 @@ const AddItems: React.FC<AddItemsProps> = ({
     category: "",
     quantity: 1,
   });
+  const [pantryItems, setPantryItems] = useState<GroceryItem[]>([]);
+  const [pantryQuantityMap, setPantryQuantityMap] = useState<Record<string, number>>({});
 
   // Get all category names for autocomplete
   const categories = Object.keys(groceryItemSuggestions);
+
+  // Helper function to update pantry quantity map
+  const updatePantryQuantityMap = (items: GroceryItem[]) => {
+    const quantityMap: Record<string, number> = {};
+    items.forEach((item) => {
+      const itemName = item.Name.toLowerCase().trim();
+      quantityMap[itemName] = (quantityMap[itemName] || 0) + item.Quantity;
+    });
+    setPantryQuantityMap(quantityMap);
+  };
+
+  // Fetch pantry items on component mount
+  useEffect(() => {
+    const fetchPantryItems = async () => {
+      try {
+        const items = await getPantryItems();
+        setPantryItems(items);
+        updatePantryQuantityMap(items);
+      } catch (err) {
+        // Silently fail - pantry items might not be available yet
+        console.error("Error fetching pantry items:", err);
+      }
+    };
+
+    fetchPantryItems();
+  }, []); // Only run on mount
 
   const handleAddItem = async (
     itemName?: string,
@@ -44,6 +72,11 @@ const AddItems: React.FC<AddItemsProps> = ({
       );
 
       showMessage(`"${nameToAdd}" added successfully!`, "success");
+
+      // Refresh pantry items to update quantities
+      const updatedItems = await getPantryItems();
+      setPantryItems(updatedItems);
+      updatePantryQuantityMap(updatedItems);
 
       // Reset form only if called from manual input
       if (!itemName) {
@@ -110,18 +143,28 @@ const AddItems: React.FC<AddItemsProps> = ({
             <div key={category} className="category-section mb-4">
               <h3 className="category-title">{category}</h3>
               <div className="items-grid">
-                {items.map((itemName: string) => (
-                  <div key={itemName} className="suggestion-item">
-                    <span className="item-name-small">{itemName}</span>
-                    <button
-                      className="btn btn-sm btn-primary add-item-btn"
-                      onClick={() => handleAddItem(itemName, category, 1)}
-                      disabled={loading}
-                    >
-                      Add Item
-                    </button>
-                  </div>
-                ))}
+                {items.map((itemName: string) => {
+                  const itemNameLower = itemName.toLowerCase().trim();
+                  const quantity = pantryQuantityMap[itemNameLower] || 0;
+                  
+                  return (
+                    <div key={itemName} className="suggestion-item">
+                      <span className="item-name-small">
+                        {itemName}
+                        {quantity > 0 && (
+                          <span className="pantry-quantity-badge">{quantity}</span>
+                        )}
+                      </span>
+                      <button
+                        className="btn btn-sm btn-primary add-item-btn"
+                        onClick={() => handleAddItem(itemName, category, 1)}
+                        disabled={loading}
+                      >
+                        Add Item
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )
