@@ -234,11 +234,17 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
               const isUpdating = updatingQuantities.has(itemKey);
               const isMarking = markingItems.has(itemKey);
               const currentQuantity = item.Quantity || 0;
+              const isStruckOut = currentQuantity === 0;
 
               return (
-                <div key={`${item.Name}-${index}`} className="suggestion-item-vertical">
+                <div 
+                  key={`${item.Name}-${index}`} 
+                  className={`suggestion-item-vertical ${isStruckOut ? 'item-struck-out' : ''}`}
+                >
                   <div className="item-name-line">
-                    <span className="item-name-small">{item.Name}</span>
+                    <span className={`item-name-small ${isStruckOut ? 'struck-out-text' : ''}`}>
+                      {item.Name}
+                    </span>
                   </div>
                   <div className="item-actions-line">
                     <div className="quantity-controls">

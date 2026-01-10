@@ -32,13 +32,6 @@ public class GetPantryItemsFunction
         return _cachedItems != null && 
                (DateTime.UtcNow - _cacheTimestamp) < _cacheExpiration;
     }
-    
-    // Helper method to clear cache (useful for testing or forced refresh)
-    private static void ClearCache()
-    {
-        _cachedItems = null;
-        _cacheTimestamp = DateTime.MinValue;
-    }
 
     public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
     {
