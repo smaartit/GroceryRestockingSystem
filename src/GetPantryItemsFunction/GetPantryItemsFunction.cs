@@ -45,20 +45,34 @@ public class GetPantryItemsFunction
 
         try
         {
-            // Scan all items from PantryItems table
+            // Scan items from PantryItems table with pagination to avoid memory issues
             var scanConditions = new List<ScanCondition>();
-            var items = await _dbContext.ScanAsync<PantryItem>(scanConditions).GetRemainingAsync();
-
-            // Convert to response format
-            var responseItems = items.Select(item => new
+            var scanOperationConfig = new DynamoDBOperationConfig
             {
-                Id = item.Id,
-                Name = item.Name,
-                Category = item.Category,
-                Quantity = item.Quantity,
-                Price = item.Price,
-                finished = false // Pantry items are not finished by default
-            }).ToList();
+                OverrideTableName = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE")
+            };
+            
+            // Use paginated scan to process items in batches and avoid loading everything into memory
+            var responseItems = new List<object>();
+            var asyncSearch = _dbContext.ScanAsync<PantryItem>(scanConditions, scanOperationConfig);
+            
+            // Process items in batches to reduce memory usage
+            do
+            {
+                var batch = await asyncSearch.GetNextSetAsync();
+                foreach (var item in batch)
+                {
+                    responseItems.Add(new
+                    {
+                        Id = item.Id,
+                        Name = item.Name,
+                        Category = item.Category,
+                        Quantity = item.Quantity,
+                        Price = item.Price,
+                        finished = false // Pantry items are not finished by default
+                    });
+                }
+            } while (!asyncSearch.IsDone);
 
             // Return success response with CORS headers
             var response = new APIGatewayProxyResponse
