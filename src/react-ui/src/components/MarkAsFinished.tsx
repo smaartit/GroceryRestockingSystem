@@ -41,7 +41,36 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
       }
     });
 
-    return Array.from(combinedMap.values());
+    // Convert to array and sort alphabetically by name
+    return Array.from(combinedMap.values()).sort((a, b) => {
+      const nameA = a.Name.toLowerCase().trim();
+      const nameB = b.Name.toLowerCase().trim();
+      return nameA.localeCompare(nameB);
+    });
+  };
+
+  // Helper function to group items by category
+  const groupItemsByCategory = (items: GroceryItem[]): Record<string, GroceryItem[]> => {
+    const grouped: Record<string, GroceryItem[]> = {};
+
+    items.forEach((item) => {
+      const category = item.Category || "General";
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push(item);
+    });
+
+    // Sort items within each category alphabetically
+    Object.keys(grouped).forEach((category) => {
+      grouped[category].sort((a, b) => {
+        const nameA = a.Name.toLowerCase().trim();
+        const nameB = b.Name.toLowerCase().trim();
+        return nameA.localeCompare(nameB);
+      });
+    });
+
+    return grouped;
   };
 
   // Fetch pantry items when component mounts
@@ -117,37 +146,46 @@ const MarkAsFinished: React.FC<MarkAsFinishedProps> = ({
     );
   }
 
+  // Group items by category
+  const itemsByCategory = groupItemsByCategory(items);
+  const sortedCategories = Object.keys(itemsByCategory).sort((a, b) => {
+    // Sort categories alphabetically, but put "General" at the end
+    if (a === "General") return 1;
+    if (b === "General") return -1;
+    return a.localeCompare(b);
+  });
+
   return (
-    <ul className="grocery-list">
-      {items.map((item, index) => (
-        <li key={`${item.Name}-${index}`} className="grocery-item">
-          <div className="item-info">
-            <span className="item-name">{item.Name}</span>
-            <div className="item-details-small">
-              {item.Category && (
-                <span className="item-category-small">
-                  {getCategoryIcon(item.Category)} {item.Category}
+    <div className="grocery-suggestions">
+      {sortedCategories.map((category) => (
+        <div key={category} className="category-section mb-4">
+          <h3 className="category-title">
+            {getCategoryIcon(category)} {category}
+          </h3>
+          <div className="items-grid">
+            {itemsByCategory[category].map((item, index) => (
+              <div key={`${item.Name}-${index}`} className="suggestion-item">
+                <span className="item-name-small">
+                  {item.Name}
+                  {item.Quantity > 0 && (
+                    <span className="pantry-quantity-badge">{item.Quantity}</span>
+                  )}
                 </span>
-              )}
-              <span className="item-quantity-small">
-                Qty: {item.Quantity || 0}
-              </span>
-            </div>
+                {item.Quantity > 0 && (
+                  <button
+                    className="btn btn-sm btn-primary add-item-btn"
+                    onClick={() => markAsFinished(item)}
+                    disabled={loading}
+                  >
+                    Mark as Finished
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-          <div className="item-actions">
-            {item.Quantity > 0 && (
-              <button
-                className="action-button consume-button"
-                onClick={() => markAsFinished(item)}
-                disabled={loading}
-              >
-                Mark as Finished
-              </button>
-            )}
-          </div>
-        </li>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 };
 

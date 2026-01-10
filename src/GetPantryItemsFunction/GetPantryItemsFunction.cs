@@ -49,7 +49,7 @@ public class GetPantryItemsFunction
             // Use low-level DynamoDB client for better performance
             // Scan with pagination to handle large tables efficiently
             var responseItems = new List<Dictionary<string, object>>();
-            var request = new ScanRequest
+            var scanRequest = new ScanRequest
             {
                 TableName = tableName,
                 Limit = 100 // Process in batches of 100 items
@@ -57,7 +57,7 @@ public class GetPantryItemsFunction
             
             do
             {
-                var scanResponse = await _dynamoDbClient.ScanAsync(request);
+                var scanResponse = await _dynamoDbClient.ScanAsync(scanRequest);
                 
                 // Process each item in the batch
                 foreach (var item in scanResponse.Items)
@@ -75,8 +75,8 @@ public class GetPantryItemsFunction
                 }
                 
                 // Continue with next page if available
-                request.ExclusiveStartKey = scanResponse.LastEvaluatedKey;
-            } while (request.ExclusiveStartKey != null && request.ExclusiveStartKey.Count > 0);
+                scanRequest.ExclusiveStartKey = scanResponse.LastEvaluatedKey;
+            } while (scanRequest.ExclusiveStartKey != null && scanRequest.ExclusiveStartKey.Count > 0);
             
             context.Logger.LogInformation($"Retrieved {responseItems.Count} items from table");
 
