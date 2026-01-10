@@ -117,21 +117,25 @@ public class GetGroceryListFunction
                 Headers = corsHeaders
             };
             
+            // Ensure headers are set
+            if (response.Headers == null)
+            {
+                response.Headers = corsHeaders;
+            }
+            
             return response;
         }
         catch (Exception ex)
         {
-            context.Logger.LogError($"Error retrieving grocery list items: {ex.Message}");
-            context.Logger.LogError($"Stack trace: {ex.StackTrace}");
-            
-            var errorResponse = new APIGatewayProxyResponse
+            // Handle errors and return error response
+            context.Logger.LogLine($"Error getting grocery list items: {ex.Message}");
+            context.Logger.LogLine($"Stack trace: {ex.StackTrace}");
+            return new APIGatewayProxyResponse
             {
                 StatusCode = 500,
-                Body = JsonSerializer.Serialize(new { error = "Failed to retrieve grocery list items", message = ex.Message }),
+                Body = $"Failed to get grocery list items: {ex.Message}",
                 Headers = corsHeaders
             };
-            
-            return errorResponse;
         }
     }
 }
