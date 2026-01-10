@@ -28,7 +28,7 @@ public class GetPantryItemsFunction
         var corsHeaders = new Dictionary<string, string>
         {
             { "Access-Control-Allow-Origin", "*" },
-            { "Access-Control-Allow-Headers", "Content-Type,Authorization" },
+            { "Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token" },
             { "Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS" },
             { "Content-Type", "application/json" }
         };
@@ -60,13 +60,21 @@ public class GetPantryItemsFunction
                 finished = false // Pantry items are not finished by default
             }).ToList();
 
-            // Return success response
-            return new APIGatewayProxyResponse
+            // Return success response with CORS headers
+            var response = new APIGatewayProxyResponse
             {
                 StatusCode = 200,
                 Body = System.Text.Json.JsonSerializer.Serialize(responseItems),
                 Headers = corsHeaders
             };
+            
+            // Ensure headers are set
+            if (response.Headers == null)
+            {
+                response.Headers = corsHeaders;
+            }
+            
+            return response;
         }
         catch (Exception ex)
         {

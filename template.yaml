@@ -147,6 +147,27 @@ Resources:
         AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
         MaxAge: "'600'"
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
+        BAD_REQUEST_BODY:
+          ResponseParameters:
+            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
+        BAD_REQUEST_PARAMETERS:
+          ResponseParameters:
+            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
       DefinitionBody:
         swagger: "2.0"
         info:
@@ -265,10 +286,9 @@ Resources:
                       type: string
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
-                httpMethod: "GET"
+                httpMethod: "POST"
                 uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetPantryItemsFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
-                contentHandling: "CONVERT_TO_TEXT"
             post:
               summary: "Add a new item to the pantry"
               operationId: "addItem"
