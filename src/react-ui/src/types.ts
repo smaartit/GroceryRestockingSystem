@@ -19,10 +19,6 @@ export type TabType = "add" | "finish" | "shopping";
 
 export type MessageType = "error" | "success";
 
-// Type for grocery item suggestions structure
-export type GroceryItemSuggestions = Record<
-  string,
-  | string[]
-  | Record<string, string[] | Record<string, string[]>>
->;
+// Type for grocery item suggestions structure (simplified to one level)
+export type GroceryItemSuggestions = Record<string, string[]>;
 

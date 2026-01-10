@@ -25,6 +25,24 @@ public class AddItemFunction
 
     public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
     {
+        var corsHeaders = new Dictionary<string, string>
+        {
+            { "Access-Control-Allow-Origin", "*" },
+            { "Access-Control-Allow-Headers", "Content-Type,Authorization" },
+            { "Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS" },
+            { "Content-Type", "application/json" }
+        };
+
+        // Handle CORS preflight request
+        if (request.HttpMethod == "OPTIONS")
+        {
+            return new APIGatewayProxyResponse
+            {
+                StatusCode = 200,
+                Headers = corsHeaders
+            };
+        }
+
         try
         {
             // Parse the incoming request body
@@ -42,7 +60,7 @@ public class AddItemFunction
             {
                 StatusCode = 200,
                 Body = $"Item '{item.Name}' added successfully",
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                Headers = corsHeaders
             };
         }
         catch (Exception ex)
@@ -53,7 +71,7 @@ public class AddItemFunction
             {
                 StatusCode = 500,
                 Body = "Failed to add item",
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                Headers = corsHeaders
             };
         }
     }

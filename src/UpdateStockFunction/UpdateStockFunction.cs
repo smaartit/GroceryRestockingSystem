@@ -25,6 +25,24 @@ public class UpdateStockFunction
 
     public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
     {
+        var corsHeaders = new Dictionary<string, string>
+        {
+            { "Access-Control-Allow-Origin", "*" },
+            { "Access-Control-Allow-Headers", "Content-Type,Authorization" },
+            { "Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS" },
+            { "Content-Type", "application/json" }
+        };
+
+        // Handle CORS preflight request
+        if (request.HttpMethod == "OPTIONS")
+        {
+            return new APIGatewayProxyResponse
+            {
+                StatusCode = 200,
+                Headers = corsHeaders
+            };
+        }
+
         try
         {
             // Get item Id and new stock quantity from the request
@@ -45,7 +63,7 @@ public class UpdateStockFunction
                 {
                     StatusCode = 404,
                     Body = $"Item with Id '{itemId}' not found",
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                    Headers = corsHeaders
                 };
             }
 
@@ -60,7 +78,7 @@ public class UpdateStockFunction
             {
                 StatusCode = 200,
                 Body = $"Item '{existingItem.Name}' stock updated to {existingItem.Quantity}",
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                Headers = corsHeaders
             };
         }
         catch (Exception ex)
@@ -71,7 +89,7 @@ public class UpdateStockFunction
             {
                 StatusCode = 500,
                 Body = "Failed to update stock",
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                Headers = corsHeaders
             };
         }
     }

@@ -33,6 +33,16 @@ public class ApiConsumeItem
             { "Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS" }
         };
 
+        // Handle CORS preflight request
+        if (request.HttpMethod == "OPTIONS")
+        {
+            return new APIGatewayProxyResponse
+            {
+                StatusCode = 200,
+                Headers = corsHeaders
+            };
+        }
+
         try
         {
             context.Logger.LogInformation($"Received request: {request.Body}");
