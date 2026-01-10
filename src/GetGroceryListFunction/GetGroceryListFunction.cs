@@ -19,7 +19,7 @@ public class GetGroceryListFunction
     // Cache for grocery list items (shared across invocations in the same container)
     private static List<Dictionary<string, object>>? _cachedItems = null;
     private static DateTime _cacheTimestamp = DateTime.MinValue;
-    private static readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5); // Cache for 5 minutes to reduce DB calls
+    private static readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30); // Cache for 30 seconds to balance performance and freshness
     
     public GetGroceryListFunction()
     {
@@ -39,7 +39,7 @@ public class GetGroceryListFunction
         {
             { "Access-Control-Allow-Origin", "*" },
             { "Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token" },
-            { "Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS" },
+            { "Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS" },
             { "Content-Type", "application/json" }
         };
 

@@ -107,29 +107,107 @@ public class AddItemFunction
 
             var tableName = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE");
             
-            // Use low-level DynamoDB client for better performance
-            var putRequest = new PutItemRequest
+            // Check if an item with the same name and category already exists
+            // Scan for items with matching category, then filter by name (case-insensitive) in code
+            var scanRequest = new ScanRequest
             {
                 TableName = tableName,
-                Item = new Dictionary<string, AttributeValue>
+                FilterExpression = "#category = :category",
+                ExpressionAttributeNames = new Dictionary<string, string>
                 {
-                    { "Id", new AttributeValue { S = itemId } },
-                    { "Name", new AttributeValue { S = itemName } },
-                    { "Category", new AttributeValue { S = category } },
-                    { "Quantity", new AttributeValue { N = quantity.ToString() } },
-                    { "Price", new AttributeValue { N = price.ToString("F2") } }
+                    { "#category", "Category" }
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":category", new AttributeValue { S = category } }
                 }
             };
 
-            await _dynamoDbClient.PutItemAsync(putRequest);
-
-            // Return success response
-            return new APIGatewayProxyResponse
+            var scanResponse = await _dynamoDbClient.ScanAsync(scanRequest);
+            
+            // Find matching item by name (case-insensitive)
+            Dictionary<string, AttributeValue>? existingItem = null;
+            if (scanResponse.Items != null && scanResponse.Items.Count > 0)
             {
-                StatusCode = 200,
-                Body = $"Item '{itemName}' added successfully",
-                Headers = corsHeaders
-            };
+                var itemNameLower = itemName.ToLowerInvariant().Trim();
+                foreach (var item in scanResponse.Items)
+                {
+                    if (item.ContainsKey("Name") && item["Name"].S != null)
+                    {
+                        var existingName = item["Name"].S.ToLowerInvariant().Trim();
+                        if (existingName == itemNameLower)
+                        {
+                            existingItem = item;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (existingItem != null && existingItem.ContainsKey("Id"))
+            {
+                // Item exists, update its quantity
+                var existingId = existingItem["Id"].S;
+                
+                // Update the existing item's quantity
+                var updateRequest = new UpdateItemRequest
+                {
+                    TableName = tableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        { "Id", new AttributeValue { S = existingId } }
+                    },
+                    UpdateExpression = "SET #quantity = :quantity, #price = :price",
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        { "#quantity", "Quantity" },
+                        { "#price", "Price" }
+                    },
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        { ":quantity", new AttributeValue { N = quantity.ToString() } },
+                        { ":price", new AttributeValue { N = price.ToString("F2") } }
+                    }
+                };
+
+                await _dynamoDbClient.UpdateItemAsync(updateRequest);
+                
+                context.Logger.LogInformation($"Updated existing item '{itemName}' (ID: {existingId}) quantity to {quantity}");
+
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = 200,
+                    Body = $"Item '{itemName}' quantity updated to {quantity}",
+                    Headers = corsHeaders
+                };
+            }
+            else
+            {
+                // Item doesn't exist, create a new one
+                var putRequest = new PutItemRequest
+                {
+                    TableName = tableName,
+                    Item = new Dictionary<string, AttributeValue>
+                    {
+                        { "Id", new AttributeValue { S = itemId } },
+                        { "Name", new AttributeValue { S = itemName } },
+                        { "Category", new AttributeValue { S = category } },
+                        { "Quantity", new AttributeValue { N = quantity.ToString() } },
+                        { "Price", new AttributeValue { N = price.ToString("F2") } }
+                    }
+                };
+
+                await _dynamoDbClient.PutItemAsync(putRequest);
+                
+                context.Logger.LogInformation($"Created new item '{itemName}' (ID: {itemId}) with quantity {quantity}");
+
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = 200,
+                    Body = $"Item '{itemName}' added successfully",
+                    Headers = corsHeaders
+                };
+            }
         }
         catch (Exception ex)
         {
