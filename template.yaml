@@ -147,27 +147,6 @@ Resources:
         AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
         MaxAge: "'600'"
-      GatewayResponses:
-        DEFAULT_4XX:
-          ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
-        DEFAULT_5XX:
-          ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
-        BAD_REQUEST_BODY:
-          ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
-        BAD_REQUEST_PARAMETERS:
-          ResponseParameters:
-            gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-            gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-            gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
       DefinitionBody:
         swagger: "2.0"
         info:
@@ -286,7 +265,6 @@ Resources:
                       type: string
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
-                httpMethod: "POST"
                 uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetPantryItemsFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
             post:
@@ -413,6 +391,14 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GroceryRestockingApi}/*/*"
 
+  GetPantryItemsFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetPantryItemsFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GroceryRestockingApi}/*/*"
+
   # API Gateway Lambda integration
   ApiConsumeItemFunction:
     Type: "AWS::Serverless::Function"
@@ -446,19 +432,6 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PantryItemsTable
-      Events:
-        AddItemAPI:
-          Type: Api
-          Properties:
-            Path: /items
-            Method: POST
-            RestApiId: !Ref GroceryRestockingApi
-        AddItemOptionsAPI:
-          Type: Api
-          Properties:
-            Path: /items
-            Method: OPTIONS
-            RestApiId: !Ref GroceryRestockingApi
 
   GetPantryItemsFunction:
     Type: AWS::Serverless::Function
