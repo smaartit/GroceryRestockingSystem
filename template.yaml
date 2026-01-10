@@ -299,6 +299,64 @@ Resources:
                 httpMethod: "POST"
                 uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${AddItemFunction.Arn}/invocations"
                 passthroughBehavior: "when_no_match"
+          /grocery-list:
+            options:
+              summary: "CORS preflight for grocery-list"
+              operationId: "groceryListOptions"
+              responses:
+                "200":
+                  description: "CORS preflight response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: "mock"
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  "200":
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                      method.response.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+                    responseTemplates:
+                      application/json: ""
+            get:
+              summary: "Get all items from the grocery list"
+              operationId: "getGroceryList"
+              responses:
+                "200":
+                  description: "List of grocery list items"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                "500":
+                  description: "Internal server error"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetGroceryListFunction.Arn}/invocations"
+                passthroughBehavior: "when_no_match"
           /items/{id}:
             options:
               summary: "CORS preflight for update item"
@@ -397,6 +455,14 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GroceryRestockingApi}/*/*"
 
+  GetGroceryListFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetGroceryListFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GroceryRestockingApi}/*/*"
+
   # API Gateway Lambda integration
   ApiConsumeItemFunction:
     Type: "AWS::Serverless::Function"
@@ -447,6 +513,23 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref PantryItemsTable
+
+  GetGroceryListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src/GetGroceryListFunction
+      Handler: GetGroceryListFunction::GetGroceryListFunction.GetGroceryListFunction::FunctionHandler
+      Runtime: dotnet8
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 10
+      Environment:
+        Variables:
+          GROCERY_TABLE: !Ref GroceryTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GroceryTable
 
   UpdateStockFunction:
     Type: AWS::Serverless::Function

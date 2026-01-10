@@ -71,7 +71,11 @@ const App: React.FC = () => {
       )}
 
       {activeTab === "shopping" && (
-        <ShoppingList items={[]} loading={loading} />
+        <ShoppingList
+          loading={loading}
+          setLoading={setLoading}
+          showMessage={showMessage}
+        />
       )}
     </div>
   );

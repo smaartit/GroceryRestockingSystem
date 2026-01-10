@@ -110,3 +110,26 @@ export const getPantryItems = async (): Promise<GroceryItem[]> => {
   return items as GroceryItem[];
 };
 
+// Get all grocery list items
+export const getGroceryList = async (): Promise<GroceryItem[]> => {
+  const apiBaseUrl = getApiBaseUrl();
+  const url = `${apiBaseUrl}/grocery-list`;
+
+  const options: RequestInit = {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to get grocery list items");
+  }
+
+  const items = await response.json();
+  return items as GroceryItem[];
+};
+
