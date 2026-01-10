@@ -174,7 +174,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({
           <button
             className="btn btn-primary"
             onClick={handleRestockSelected}
-            disabled={isRestocking || loading}
+            disabled={isRestocking}
             style={{
               padding: "10px 20px",
               fontSize: "1rem",
