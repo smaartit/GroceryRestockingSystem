@@ -108,40 +108,39 @@ public class AddItemFunction
             var tableName = Environment.GetEnvironmentVariable("PANTRY_ITEMS_TABLE");
             
             // Check if an item with the same name and category already exists
-            // Scan for items with matching category, then filter by name (case-insensitive) in code
-            var scanRequest = new ScanRequest
-            {
-                TableName = tableName,
-                FilterExpression = "#category = :category",
-                ExpressionAttributeNames = new Dictionary<string, string>
-                {
-                    { "#category", "Category" }
-                },
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    { ":category", new AttributeValue { S = category } }
-                }
-            };
-
-            var scanResponse = await _dynamoDbClient.ScanAsync(scanRequest);
-            
-            // Find matching item by name (case-insensitive)
+            // Use GSI to query efficiently instead of scanning (much faster!)
             Dictionary<string, AttributeValue>? existingItem = null;
-            if (scanResponse.Items != null && scanResponse.Items.Count > 0)
+            try
             {
-                var itemNameLower = itemName.ToLowerInvariant().Trim();
-                foreach (var item in scanResponse.Items)
+                var queryRequest = new QueryRequest
                 {
-                    if (item.ContainsKey("Name") && item["Name"].S != null)
+                    TableName = tableName,
+                    IndexName = "NameCategoryIndex",
+                    KeyConditionExpression = "#name = :name AND #category = :category",
+                    ExpressionAttributeNames = new Dictionary<string, string>
                     {
-                        var existingName = item["Name"].S.ToLowerInvariant().Trim();
-                        if (existingName == itemNameLower)
-                        {
-                            existingItem = item;
-                            break;
-                        }
-                    }
+                        { "#name", "Name" },
+                        { "#category", "Category" }
+                    },
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        { ":name", new AttributeValue { S = itemName.Trim() } },
+                        { ":category", new AttributeValue { S = category } }
+                    },
+                    Limit = 1 // Only need one match
+                };
+
+                var queryResponse = await _dynamoDbClient.QueryAsync(queryRequest);
+                
+                if (queryResponse.Items != null && queryResponse.Items.Count > 0)
+                {
+                    existingItem = queryResponse.Items[0];
                 }
+            }
+            catch (Exception ex)
+            {
+                // If GSI doesn't exist yet or query fails, fall back to creating new item
+                context.Logger.LogWarning($"Query failed (GSI may not be ready): {ex.Message}. Will create new item.");
             }
             
             if (existingItem != null && existingItem.ContainsKey("Id"))

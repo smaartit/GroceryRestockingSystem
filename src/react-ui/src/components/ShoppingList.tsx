@@ -55,36 +55,36 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ loading, setLoading, showMe
       
       console.log("Restocking items:", selectedItems.map(i => ({ name: i.Name, id: i.Id, qty: i.Quantity })));
       
-      // Step 1: Restock each selected item (add to PantryItems)
-      const restockResults = await Promise.allSettled(
-        selectedItems.map((item) => {
-          console.log(`Adding to pantry: ${item.Name} (Qty: ${item.Quantity || 1})`);
-          return addItem(
-            item.Name,
-            item.Category || "General",
-            item.Quantity || 1
-          );
-        })
-      );
+      // Optimistic UI update: remove items from list immediately
+      const itemIdsToRemove = new Set(selectedItems.map(item => item.Id));
+      setItems(prevItems => prevItems.filter(item => !itemIdsToRemove.has(item.Id)));
+      
+      // Run add and delete operations in parallel for better performance
+      const [restockResults, deleteResults] = await Promise.all([
+        // Step 1: Restock each selected item (add to PantryItems)
+        Promise.allSettled(
+          selectedItems.map((item) => {
+            console.log(`Adding to pantry: ${item.Name} (Qty: ${item.Quantity || 1})`);
+            return addItem(
+              item.Name,
+              item.Category || "General",
+              item.Quantity || 1
+            );
+          })
+        ),
+        // Step 2: Delete each selected item from GroceryList
+        Promise.allSettled(
+          selectedItems.map((item) => {
+            console.log(`Deleting from grocery list: ${item.Name} (ID: ${item.Id})`);
+            return deleteGroceryListItem(item.Id);
+          })
+        )
+      ]);
 
       // Check for failures in restocking
       const restockFailures = restockResults
         .map((result, index) => ({ result, item: selectedItems[index] }))
         .filter(({ result }) => result.status === "rejected");
-
-      if (restockFailures.length > 0) {
-        const failedItems = restockFailures.map(({ item }) => item.Name).join(", ");
-        showMessage(`Failed to add to pantry: ${failedItems}`, "error");
-        // Continue with deletion even if some restocks failed
-      }
-
-      // Step 2: Delete each selected item from GroceryList
-      const deleteResults = await Promise.allSettled(
-        selectedItems.map((item) => {
-          console.log(`Deleting from grocery list: ${item.Name} (ID: ${item.Id})`);
-          return deleteGroceryListItem(item.Id);
-        })
-      );
 
       // Check for failures in deletion
       const deleteFailures = deleteResults
